@@ -18,8 +18,16 @@ plt.xlabel(r'B candidate mass / MeV/$c^2$')
 plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
 plt.show()
 
+#  remove charm anticharm meson J/psi (dominanat interaction)
 plt.hist(data_2011[abs(data_2011['dimuon-system invariant mass'] -
          3097) > 100]['B invariant mass'], bins=100)
+plt.xlabel(r'B candidate mass / MeV/$c^2$')
+plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+plt.show()
+
+#  remove meson -> kaon plus lepton pair psi(2S) (second dominant interaction)
+plt.hist(data_2011[(abs(data_2011['dimuon-system invariant mass'] - 3097) > 100) &
+         (abs(data_2011['dimuon-system invariant mass'] - 3686) > 100)]['B invariant mass'], bins=100)
 plt.xlabel(r'B candidate mass / MeV/$c^2$')
 plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
 plt.show()
