@@ -16,16 +16,16 @@ def task1():
     with open('data/dataset_2011.pkl', 'rb') as infile:
         data_2011 = pickle.load(infile)
 
-    peaks = find_peaks(
-        plt.hist(data_2011['B invariant mass'], bins=100)[0], height=1e5)[0]
-
-    print(
-        f"B invariant mass peaks: {data_2011['B invariant mass'][peaks].values}")
-
-    plt.hist(data_2011['B invariant mass'], bins=100)
+    hist = plt.hist(data_2011['B invariant mass'], bins=100)
+    peaks = find_peaks(hist[0], height=1e5)[0]
+    plt.vlines(data_2011['B invariant mass'][peaks], 0, max(hist[0]),
+               colors='r', linestyles='dashed', label='peaks')
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
+
+    print(
+        f"B invariant mass peaks: {data_2011['B invariant mass'][peaks].values}")
 
     #  remove charm anticharm meson J/psi (dominanat interaction)
     plt.hist(data_2011[abs(data_2011['dimuon-system invariant mass'] -
@@ -48,11 +48,11 @@ def task2():
     with open('data/dataset_2011.pkl', 'rb') as infile:
         data_2011 = pickle.load(infile)
 
-    peaks = find_peaks(
-        plt.hist(data_2011['dimuon-system invariant mass'], bins=100)[0], height=1e4)[0]
+    hist = plt.hist(data_2011['dimuon-system invariant mass'], bins=100)
 
-    plt.hist(data_2011['dimuon-system invariant mass'], bins=100)
-    plt.vlines(data_2011['dimuon-system invariant mass'][peaks], 0, 5e4,
+    peaks = find_peaks(hist[0], height=1e3, distance=1)[0]
+
+    plt.vlines(data_2011['dimuon-system invariant mass'][peaks], 0, max(hist[0]),
                colors='r', linestyles='dashed', label='peaks')
 
     plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
@@ -64,4 +64,4 @@ def task2():
 
 
 if __name__ == "__main__":
-    task1()
+    task2()
