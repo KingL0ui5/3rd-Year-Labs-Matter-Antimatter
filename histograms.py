@@ -6,30 +6,62 @@ Plot invariant mass histograms for 2011 dataset
 import pickle
 from matplotlib import pyplot as plt
 import seaborn as sns
+from scipy.signal import find_peaks
 sns.set_style('darkgrid')
 sns.set_context('paper')
 sns.set_palette("colorblind")
 
-with open('data/dataset_2011.pkl', 'rb') as infile:
-    data_2011 = pickle.load(infile)
 
-plt.hist(data_2011['B invariant mass'], bins=100)
-plt.xlabel(r'B candidate mass / MeV/$c^2$')
-plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
-plt.show()
+def task1():
+    with open('data/dataset_2011.pkl', 'rb') as infile:
+        data_2011 = pickle.load(infile)
 
-#  remove charm anticharm meson J/psi (dominanat interaction)
-plt.hist(data_2011[abs(data_2011['dimuon-system invariant mass'] -
-         3097) > 100]['B invariant mass'], bins=100)
-plt.xlabel(r'B candidate mass / MeV/$c^2$')
-plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
-plt.show()
+    peaks = find_peaks(
+        plt.hist(data_2011['B invariant mass'], bins=100)[0], height=1e5)[0]
 
-#  remove charm anticharm meson J/psi and psi(2S) (other dominanat interaction)
-plt.hist(data_2011[(abs(data_2011['dimuon-system invariant mass'] - 3097) > 100) &
-         (abs(data_2011['dimuon-system invariant mass'] - 3686) > 100)]['B invariant mass'], bins=100)
-plt.xlabel(r'B candidate mass / MeV/$c^2$')
-plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
-plt.show()
+    print(
+        f"B invariant mass peaks: {data_2011['B invariant mass'][peaks].values}")
 
-#  left with rare decays only
+    plt.hist(data_2011['B invariant mass'], bins=100)
+    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+    plt.show()
+
+    #  remove charm anticharm meson J/psi (dominanat interaction)
+    plt.hist(data_2011[abs(data_2011['dimuon-system invariant mass'] -
+                           3097) > 100]['B invariant mass'], bins=100)
+    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+    plt.show()
+
+    #  remove charm anticharm meson J/psi and psi(2S) (other dominanat interaction)
+    plt.hist(data_2011[(abs(data_2011['dimuon-system invariant mass'] - 3097) > 100) &
+                       (abs(data_2011['dimuon-system invariant mass'] - 3686) > 100)]['B invariant mass'], bins=100)
+    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+    plt.show()
+
+    #  left with rare decays only
+
+
+def task2():
+    with open('data/dataset_2011.pkl', 'rb') as infile:
+        data_2011 = pickle.load(infile)
+
+    peaks = find_peaks(
+        plt.hist(data_2011['dimuon-system invariant mass'], bins=100)[0], height=1e4)[0]
+
+    plt.hist(data_2011['dimuon-system invariant mass'], bins=100)
+    plt.vlines(data_2011['dimuon-system invariant mass'][peaks], 0, 5e4,
+               colors='r', linestyles='dashed', label='peaks')
+
+    plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+    plt.show()
+
+    print(
+        f"Invariant mass peaks: {data_2011['dimuon-system invariant mass'][peaks].values}")
+
+
+if __name__ == "__main__":
+    task1()
