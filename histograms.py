@@ -50,7 +50,7 @@ def task2():
 
     hist = plt.hist(data_2011['dimuon-system invariant mass'], bins=100)
 
-    peaks = find_peaks(hist[0], height=1e3, distance=1)[0]
+    peaks = find_peaks(hist[0], height=1e3, distance=1, prominence=50)[0]
 
     plt.vlines(data_2011['dimuon-system invariant mass'][peaks], 0, max(hist[0]),
                colors='r', linestyles='dashed', label='peaks')
