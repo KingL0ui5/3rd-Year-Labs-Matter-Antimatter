@@ -88,7 +88,6 @@ def samesign():
     plt.xlabel(r'Same-sign muon invariant mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
-
     return data
 
 
