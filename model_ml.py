@@ -1,4 +1,4 @@
-## Apply the ML methods to the split datasets.
+# Apply the ML methods to the split datasets.
 
 import xgboost
 import matplotlib.pyplot as plt
@@ -9,5 +9,3 @@ import histograms
 
 # Take a look at the datasets and see how they separate
 sig, bkg = histograms.data()
-
-
