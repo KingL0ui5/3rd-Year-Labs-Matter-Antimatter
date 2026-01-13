@@ -62,16 +62,19 @@ def __task2():
 
 
 def data():
-    data = __data_2011['B invariant mass']
-    signal = data[(data <= 5400) & (data >= 5200)]
+    dataset = __data_2011
+    signal = dataset[(dataset['B invariant mass'] <= 5400) &
+                     (dataset['B invariant mass'] >= 5200)]
 
     hist = plt.hist(signal, bins=100)
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
 
-    background = data[(data > 5400) | (data < 5200)]
+    background = dataset[(dataset['B invariant mass'] > 5400)
+                         | (dataset['B invariant mass'] < 5200)]
     hist = plt.hist(background, bins=100)
+
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
@@ -80,8 +83,7 @@ def data():
 
 
 def samesign():
-    data = __data_2011['Same-sign muon invariant mass']
-
+    data = __data_2011['Same-sign muon assumed particle type']
     hist = plt.hist(data, bins=150)
     plt.xlabel(r'Same-sign muon invariant mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
