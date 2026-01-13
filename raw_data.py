@@ -16,7 +16,6 @@ with open('data/dataset_2011.pkl', 'rb') as infile:
 
 
 def __task1():
-
     hist = plt.hist(__data_2011['B invariant mass'], bins=100)
     peaks = find_peaks(hist[0], height=1e5)[0]
     plt.vlines(__data_2011['B invariant mass'][peaks], 0, max(hist[0]),

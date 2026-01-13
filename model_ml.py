@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import roc_curve
 import raw_data
-from correlations import drop_correlated
+from filtering import drop_correlated
 
 data_raw = raw_data.data()
 sig, bkg = drop_correlated('B invariant mass', data_raw, threshold=0.5)
@@ -45,7 +45,6 @@ plt.ylabel(r'Candidates$')
 plt.legend()
 plt.show()
 
-
 plt.scatter(sig, sig, label='Signal')
 plt.scatter(bkg, bkg, label='Background')
 plt.xlabel(r'var2')
@@ -53,9 +52,9 @@ plt.ylabel(r'var3')
 plt.legend()
 plt.show()
 
+# %% Define Model
 model = xgboost.XGBClassifier(eval_metric='auc', early_stopping_rounds=50,
                               n_estimators=1000, learning_rate=0.3, max_depth=6)
-
 
 # %% Train Model
 nSignalTrain = int(0.9*nSignalTotal)

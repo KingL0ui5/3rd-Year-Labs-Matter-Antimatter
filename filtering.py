@@ -45,4 +45,4 @@ if __name__ == "__main__":
     correlations = plot_Binv_correlation(data)
     data_cleaned = drop_correlated('B invariant mass', data, threshold=0.5)
 
-    print(correlations.to_string(), file=open("output.txt", "w"))
+    print(correlations.to_string(), file=open("data/output.txt", "w"))
