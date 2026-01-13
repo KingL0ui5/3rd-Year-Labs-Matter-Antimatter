@@ -12,7 +12,7 @@ sns.set_context('paper')
 sns.set_palette("colorblind")
 
 
-def task1():
+def __task1():
     with open('data/dataset_2011.pkl', 'rb') as infile:
         data_2011 = pickle.load(infile)
 
@@ -44,7 +44,7 @@ def task1():
     #  left with rare decays only
 
 
-def task2():
+def __task2():
     with open('data/dataset_2011.pkl', 'rb') as infile:
         data_2011 = pickle.load(infile)
 
@@ -63,5 +63,34 @@ def task2():
         f"Invariant mass peaks: {data_2011['dimuon-system invariant mass'][peaks].values}")
 
 
+def signal_data():
+    with open('data/dataset_2011.pkl', 'rb') as infile:
+        data_2011 = pickle.load(infile)
+
+    data = data_2011['B invariant mass']
+    signal = data[(data <= 5400) & (data >= 5200)]
+
+    hist = plt.hist(signal, bins=100)
+    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+    plt.show()
+
+    return signal
+
+
+def background_data():
+    with open('data/dataset_2011.pkl', 'rb') as infile:
+        data_2011 = pickle.load(infile)
+
+    data = data_2011['B invariant mass']
+    background = data[(data > 5400) | (data < 5200)]
+    hist = plt.hist(background, bins=100)
+    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+    plt.show()
+
+    return background
+
+
 if __name__ == "__main__":
-    task2()
+    background_data()
