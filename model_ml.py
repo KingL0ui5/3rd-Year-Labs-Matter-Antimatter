@@ -13,7 +13,7 @@ import raw_data
 from correlations import drop_correlated
 
 data_raw = raw_data.data()
-sig, bkg = drop_correlated('B invariant mass', data_raw, threshold=0.7)
+sig, bkg = drop_correlated('B invariant mass', data_raw, threshold=0.5)
 
 
 plt.hist(sig, bins=100, label='Signal')
