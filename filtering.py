@@ -66,23 +66,16 @@ def calculate_all_correlations(target, data, sample_size=10000):
         'Kendall': kendall,
         'Mutual_Info': mi_series
     }).drop(index=target, errors='ignore')
-    
+
     return results.sort_values(by='Mutual_Info', ascending=False)
 
 if __name__ == "__main__":
     # Load full dataset
     data = pd.read_pickle('data/dataset_2011.pkl')
-<<<<<<< HEAD:filtering.py
-    correlations = plot_Binv_correlation(data)
-    data_cleaned = drop_correlated('B invariant mass', data, threshold=0.5)
 
-    print(correlations.to_string(), file=open("data/output.txt", "w"))
-=======
-    
     # Run calculation on sample
     correlations = calculate_all_correlations('B invariant mass', data)
-    
+
     # Output results
     print(correlations.to_string(), file=open("output.txt", "w"))
     print("Done! Results saved to output.txt")
->>>>>>> 71b740e (Correlation study):correlations.py
