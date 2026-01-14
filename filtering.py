@@ -52,11 +52,8 @@ def calculate_all_correlations(target, data, sample_size=10000):
     print("Calculating Pearson, Spearman, and Kendall...")
     pearson = numeric_df.corr(method='pearson')[target]
     spearman = numeric_df.corr(method='spearman')[target]
-    # Kendall is the bottleneck; sampling makes it feasible
     kendall = numeric_df.corr(method='kendall')[target]
 
-    print("Calculating Mutual Information (using all CPU cores)...")
-    # n_jobs=-1 speeds up MI significantly on a Mac with multiple cores
     mi_scores = mutual_info_regression(X, y, n_jobs=-1, random_state=42)
     mi_series = pd.Series(mi_scores, index=X.columns)
 
@@ -69,6 +66,16 @@ def calculate_all_correlations(target, data, sample_size=10000):
 
     return results.sort_values(by='Mutual_Info', ascending=False)
 
+def plot_correlations():
+    correlations = pd.read_csv('output.txt', sep='\t', index_col=0)
+    plt.figure(figsize=(12, 10))
+    sns.heatmap(correlations, annot=True, cmap='coolwarm', center=0, fmt='.3f')
+    plt.title('Feature Correlations with B invariant mass')
+    plt.ylabel('Features')
+    plt.xlabel('Correlation Metrics')
+    # plt.savefig('figs/feature_correlations.png')
+    plt.show()
+
 if __name__ == "__main__":
     # Load full dataset
     data = pd.read_pickle('data/dataset_2011.pkl')
@@ -77,5 +84,6 @@ if __name__ == "__main__":
     correlations = calculate_all_correlations('B invariant mass', data)
 
     # Output results
-    print(correlations.to_string(), file=open("output.txt", "w"))
+    correlations.to_csv("output.txt", sep='\t', index=True)
+    plot_correlations()
     print("Done! Results saved to output.txt")
