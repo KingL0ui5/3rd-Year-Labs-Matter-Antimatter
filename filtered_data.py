@@ -67,14 +67,16 @@ def seperated_data(drop_cols: list = None):
         List of columns to drop from the dataset in addition to correlated ones.
     """
     from correlation import drop_correlated
-    dataset = drop_correlated('B invariant mass', __data_2011, threshold=0.5)
+    # dataset = drop_correlated('B invariant mass', __data_2011, threshold=0.5)
+    dataset = __data_2011.copy()
 
     if drop_cols:
         dataset = dataset.drop(columns=drop_cols)
-    signal = dataset['dimuon-system invariant mass']
+    signal = dataset[dataset['dimuon-system invariant mass'].between(3000, 3200) |
+                     dataset['dimuon-system invariant mass'].between(3600, 3750)]
 
-    hist = plt.hist(signal['B invariant mass'], bins=100)
-    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    hist = plt.hist(signal, bins=100)
+    plt.xlabel(r'B candidate mass (filtered on dimuon signal) / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
 

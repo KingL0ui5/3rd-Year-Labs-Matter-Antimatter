@@ -17,7 +17,7 @@ nBackgroundTotal = bkg.shape[0]
 
 # %% Define Model
 model = xgboost.XGBClassifier(eval_metric='auc', early_stopping_rounds=50,
-                              n_estimators=1000, learning_rate=0.3, max_depth=6)
+                              n_estimators=1000, learning_rate=0.3, max_depth=6, base_score=0.5)
 
 # %% Train Model
 nSignalTrain = int(0.9*nSignalTotal)
@@ -40,12 +40,6 @@ model.fit(x_train, y_train, eval_set=[(x_test, y_test)])
 prediction = model.predict_proba(x_test)
 
 np.savetxt("output.txt", prediction, delimiter='\t')
-plt.hist(signal_pred[:, 1], bins=50, label='Signal')
-plt.hist(background_pred[:, 1], bins=50, label='Background')
-plt.xlabel(r'Signal Probability')
-plt.ylabel(r'Candidates$')
-plt.legend()
-plt.show()
 
 plt.hist([p[1] for p, cls in zip(prediction, y_test)
          if cls == 1], bins=50, label='Signal')
@@ -67,3 +61,8 @@ plt.legend()
 plt.show()
 
 ax = xgboost.plot_importance(model)
+ax.set_xticklabels([])
+ax.set_yticklabels([])
+plt.show()
+
+# %%
