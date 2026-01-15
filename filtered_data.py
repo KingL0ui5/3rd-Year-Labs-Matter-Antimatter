@@ -86,7 +86,8 @@ def seperated_data(drop_cols: list = None):
     plt.show()
 
     if drop_cols:
-        dataset = dataset.drop(columns=drop_cols)
+        signal = signal.drop(columns=drop_cols)
+        background = background.drop(columns=drop_cols)
 
     return signal, background
 

@@ -6,6 +6,7 @@ from sklearn.feature_selection import mutual_info_regression
 import pandas as pd
 import seaborn as sns
 
+
 def plot_correlation_matrix(data):
     correlation_matrix = data.corr()
     plt.figure(figsize=(10, 8))
@@ -15,12 +16,14 @@ def plot_correlation_matrix(data):
     # plt.savefig('figs/correlation_matrix.png')
     plt.show()
 
+
 def drop_correlated(target, data, threshold=0.5):
     correlations = data.corr().abs()[target]
     to_drop = correlations[((correlations > threshold) &
                            (correlations.index != target)) | correlations.isna()].index
     print(f"Dropping {len(to_drop)} columns: {list(to_drop)}")
     return data.drop(columns=to_drop)
+
 
 def calculate_all_correlations(target, data, sample_size=10000):
     # 1. Representative Sampling for speed
@@ -50,36 +53,38 @@ def calculate_all_correlations(target, data, sample_size=10000):
         'Kendall': kendall,
         'Mutual_Info': mi_series
     }).drop(index=target, errors='ignore')
-    
+
     methods = ['Pearson', 'Spearman', 'Kendall']
     plot_data = results[methods]
 
-    fig, axes = plt.subplots(1, 3, figsize=(12, 8), sharey=True, 
+    fig, axes = plt.subplots(1, 3, figsize=(12, 8), sharey=True,
                              gridspec_kw={'wspace': 0.5})
 
     for i, method in enumerate(methods):
         sns.heatmap(
-            plot_data[[method]], 
+            plot_data[[method]],
             ax=axes[i],
-            annot=False, 
-            cmap='coolwarm', 
+            annot=False,
+            cmap='coolwarm',
             yticklabels=False,
-            xticklabels=[method], # Label the bar at the bottom
+            xticklabels=[method],  # Label the bar at the bottom
             center=0,
-            cbar=False # Remove individual colorbars for a cleaner look
+            cbar=False  # Remove individual colorbars for a cleaner look
         )
         for _, spine in axes[i].spines.items():
             spine.set_visible(True)
             spine.set_linewidth(0.5)
 
     plt.suptitle(f'Statistical Correlation Methods with {target}', fontsize=16)
-    
+
     mappable = axes[0].get_children()[0]
-    fig.colorbar(mappable, ax=axes, orientation='vertical', fraction=0.02, pad=0.04)
+    fig.colorbar(mappable, ax=axes, orientation='vertical',
+                 fraction=0.02, pad=0.04)
 
     plt.show()
 
     return results.sort_values(by='Mutual_Info', ascending=False)
+
 
 if __name__ == "__main__":
     # Load full dataset
@@ -87,7 +92,8 @@ if __name__ == "__main__":
 
     # Run calculation on sample
     correlations_B = calculate_all_correlations('B invariant mass', data)
-    correlations_dimuon = calculate_all_correlations('dimuon-system invariant mass', data)
+    correlations_dimuon = calculate_all_correlations(
+        'dimuon-system invariant mass', data)
 
     # Output results
     correlations_B.to_csv("output_B.txt", sep='\t', index=True)
