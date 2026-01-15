@@ -70,13 +70,11 @@ def seperated_data(drop_cols: list = None):
     # dataset = drop_correlated('B invariant mass', __data_2011, threshold=0.5)
     dataset = __data_2011.copy()
 
-    if drop_cols:
-        dataset = dataset.drop(columns=drop_cols)
-    signal = dataset[dataset['dimuon-system invariant mass'].between(3000, 3200) |
+    signal = dataset[dataset['dimuon-system invariant mass'].between(3070, 3200) |
                      dataset['dimuon-system invariant mass'].between(3600, 3750)]
 
-    hist = plt.hist(signal, bins=100)
-    plt.xlabel(r'B candidate mass (filtered on dimuon signal) / MeV/$c^2$')
+    hist = plt.hist(signal['dimuon-system invariant mass'], bins=50)
+    plt.xlabel(r'B candidate mass) / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
 
@@ -86,6 +84,9 @@ def seperated_data(drop_cols: list = None):
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
+
+    if drop_cols:
+        dataset = dataset.drop(columns=drop_cols)
 
     return signal, background
 
@@ -100,4 +101,4 @@ def samesign():
 
 
 if __name__ == "__main__":
-    samesign()
+    seperated_data()
