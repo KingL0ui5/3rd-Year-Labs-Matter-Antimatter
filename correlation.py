@@ -1,4 +1,4 @@
-# Looking at how data features correlate with each other using multiple statistical methods.
+# Looking at how two features correlate with each other
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,6 +14,13 @@ def plot_correlation_matrix(data):
     plt.title('Feature Correlation Heatmap')
     # plt.savefig('figs/correlation_matrix.png')
     plt.show()
+
+def drop_correlated(target, data, threshold=0.5):
+    correlations = data.corr().abs()[target]
+    to_drop = correlations[((correlations > threshold) &
+                           (correlations.index != target)) | correlations.isna()].index
+    print(f"Dropping {len(to_drop)} columns: {list(to_drop)}")
+    return data.drop(columns=to_drop)
 
 def calculate_all_correlations(target, data, sample_size=10000):
     # 1. Representative Sampling for speed
@@ -43,7 +50,7 @@ def calculate_all_correlations(target, data, sample_size=10000):
         'Kendall': kendall,
         'Mutual_Info': mi_series
     }).drop(index=target, errors='ignore')
-
+    
     methods = ['Pearson', 'Spearman', 'Kendall']
     plot_data = results[methods]
 
@@ -66,7 +73,7 @@ def calculate_all_correlations(target, data, sample_size=10000):
             spine.set_linewidth(0.5)
 
     plt.suptitle(f'Statistical Correlation Methods with {target}', fontsize=16)
-
+    
     mappable = axes[0].get_children()[0]
     fig.colorbar(mappable, ax=axes, orientation='vertical', fraction=0.02, pad=0.04)
 
