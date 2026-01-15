@@ -70,7 +70,8 @@ importance = model.get_booster().get_score(importance_type='gain')
 df = pd.DataFrame(list(importance.items()), columns=['Feature', 'Importance'])
 df = df.sort_values(by='Importance', ascending=False).head(10)
 plt.figure(figsize=(10, 6))
-sns.barplot(x='Importance', y='Feature', data=df, palette='viridis')
+sns.barplot(x='Importance', y='Feature',
+            hue='Feature', data=df, palette='viridis')
 
 plt.title('Top 10 Features by Gain', fontsize=15)
 plt.xlabel('Gain', fontsize=12)
@@ -78,3 +79,9 @@ plt.ylabel('Feature', fontsize=12)
 plt.grid(axis='x', linestyle='--', alpha=0.7)
 
 plt.show()
+
+# %% Save data
+
+df_pred = pd.DataFrame(prediction, columns=[
+                       'Background Probability', 'Signal Probability'])
+df_pred.to_pickle('data/predictions.pkl')

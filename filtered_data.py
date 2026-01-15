@@ -11,7 +11,7 @@ sns.set_style('darkgrid')
 sns.set_context('paper')
 sns.set_palette("colorblind")
 
-with open('data/dataset_2011.pkl', 'rb') as infile:
+with open('datasets/dataset_2011.pkl', 'rb') as infile:
     __data_2011 = pickle.load(infile)
 
 
