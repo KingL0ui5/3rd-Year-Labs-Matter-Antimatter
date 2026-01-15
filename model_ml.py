@@ -9,10 +9,10 @@ import xgboost
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.metrics import roc_curve
-import raw_data
+import filtered_data
 
 
-sig, bkg = raw_data.seperated_data()
+sig, bkg = filtered_data.seperated_data(drop_cols=['B invariant mass'])
 nSignalTotal = sig.shape[0]
 nBackgroundTotal = bkg.shape[0]
 

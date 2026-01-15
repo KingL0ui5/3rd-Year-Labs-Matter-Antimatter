@@ -6,6 +6,7 @@ from sklearn.feature_selection import mutual_info_regression
 import pandas as pd
 import seaborn as sns
 
+
 def plot_correlation_matrix(data):
     correlation_matrix = data.corr()
     plt.figure(figsize=(10, 8))
@@ -16,6 +17,7 @@ def plot_correlation_matrix(data):
     plt.show()
 
 # plot the correlation matrix for B invariant mass
+
 
 def plot_Binv_correlation(data):
     correlation_matrix = data.corrwith(data['B invariant mass']).to_frame()
@@ -29,12 +31,14 @@ def plot_Binv_correlation(data):
 
 #  drop all columns that correlate highly with target: "B invariant mass"
 
+
 def drop_correlated(target, data, threshold=0.5):
     correlations = data.corr().abs()[target]
     to_drop = correlations[((correlations > threshold) &
                            (correlations.index != target)) | correlations.isna()].index
     print(f"Dropping {len(to_drop)} columns: {list(to_drop)}")
     return data.drop(columns=to_drop)
+
 
 def calculate_all_correlations(target, data, sample_size=10000):
     # 1. Representative Sampling for speed
@@ -66,15 +70,6 @@ def calculate_all_correlations(target, data, sample_size=10000):
 
     return results.sort_values(by='Mutual_Info', ascending=False)
 
-def plot_correlations():
-    correlations = pd.read_csv('output.txt', sep='\t', index_col=0)
-    plt.figure(figsize=(12, 10))
-    sns.heatmap(correlations, annot=True, cmap='coolwarm', center=0, fmt='.3f')
-    plt.title('Feature Correlations with B invariant mass')
-    plt.ylabel('Features')
-    plt.xlabel('Correlation Metrics')
-    # plt.savefig('figs/feature_correlations.png')
-    plt.show()
 
 if __name__ == "__main__":
     # Load full dataset

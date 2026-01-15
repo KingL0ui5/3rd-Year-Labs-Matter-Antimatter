@@ -60,9 +60,16 @@ def __task2():
         f"Invariant mass peaks: {__data_2011['dimuon-system invariant mass'][peaks].values}")
 
 
-def seperated_data():
-    from filtering import drop_correlated
+def seperated_data(drop_cols: list = None):
+    """
+    Separate the 2011 dataset into signal and background based on B invariant mass.
+    drop_cols: list
+        List of columns to drop from the dataset in addition to correlated ones.
+    """
+    from correlation import drop_correlated
     dataset = drop_correlated('B invariant mass', __data_2011, threshold=0.5)
+    if drop_cols:
+        dataset = dataset.drop(columns=drop_cols)
     signal = dataset[(dataset['B invariant mass'] <= 5400) &
                      (dataset['B invariant mass'] >= 5200)]
 
