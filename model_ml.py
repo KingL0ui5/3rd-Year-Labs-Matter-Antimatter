@@ -2,17 +2,16 @@
 Using XGBoost to classify signal and background events.
 Louis Liu 12/01
 """
-
-from matplotlib import pyplot as plt
+# %% Imports
 import pandas
 import xgboost
 import matplotlib.pyplot as plt
-import pandas as pd
 from sklearn.metrics import roc_curve
 import filtered_data
+import numpy as np
+# %% Load Data
 
-
-sig, bkg = filtered_data.seperated_data(drop_cols=['B invariant mass'])
+sig, bkg = filtered_data.seperated_data()
 nSignalTotal = sig.shape[0]
 nBackgroundTotal = bkg.shape[0]
 
@@ -40,6 +39,14 @@ model.fit(x_train, y_train, eval_set=[(x_test, y_test)])
 # %% Evaluate Model
 prediction = model.predict_proba(x_test)
 
+np.savetxt("output.txt", prediction, delimiter='\t')
+plt.hist(signal_pred[:, 1], bins=50, label='Signal')
+plt.hist(background_pred[:, 1], bins=50, label='Background')
+plt.xlabel(r'Signal Probability')
+plt.ylabel(r'Candidates$')
+plt.legend()
+plt.show()
+
 plt.hist([p[1] for p, cls in zip(prediction, y_test)
          if cls == 1], bins=50, label='Signal')
 plt.hist([p[1] for p, cls in zip(prediction, y_test)
@@ -59,4 +66,4 @@ plt.ylabel(r'Signal Efficiency')
 plt.legend()
 plt.show()
 
-a = xgboost.plot_importance(model)
+ax = xgboost.plot_importance(model)

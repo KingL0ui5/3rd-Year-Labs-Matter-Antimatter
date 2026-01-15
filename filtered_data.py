@@ -68,18 +68,17 @@ def seperated_data(drop_cols: list = None):
     """
     from correlation import drop_correlated
     dataset = drop_correlated('B invariant mass', __data_2011, threshold=0.5)
+
     if drop_cols:
         dataset = dataset.drop(columns=drop_cols)
-    signal = dataset[(dataset['B invariant mass'] <= 5400) &
-                     (dataset['B invariant mass'] >= 5200)]
+    signal = dataset['dimuon-system invariant mass']
 
     hist = plt.hist(signal['B invariant mass'], bins=100)
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
 
-    background = dataset[(dataset['B invariant mass'] > 5400)
-                         | (dataset['B invariant mass'] < 5200)]
+    background = dataset[(dataset['B invariant mass'] > 5400)]
     hist = plt.hist(background['B invariant mass'], bins=100)
 
     plt.xlabel(r'B candidate mass / MeV/$c^2$')

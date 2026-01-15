@@ -80,5 +80,4 @@ if __name__ == "__main__":
 
     # Output results
     correlations.to_csv("output.txt", sep='\t', index=True)
-    plot_correlations()
     print("Done! Results saved to output.txt")
