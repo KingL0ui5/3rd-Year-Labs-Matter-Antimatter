@@ -1,49 +1,29 @@
+"""
+Runs predictions for k folded BDT models on data and visualises the results.
+Louis Liu 15/01
+"""
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
-
-#  rethink: the predictions are on the training dataset not the whole dataset
-
-
-def __load_data():
-    with open('datasets/dataset_2012.pkl', 'rb') as infile:
-        __data_2012 = pickle.load(infile)
-    return __data_2012
+import filtered_data
+import glob
 
 
-def __load_model():
-    import xgboost
-    model = xgboost.XGBClassifier()
-    model.load_model('data/xgboost_model.json')
-    return
+def predict_all():
+    for file in glob.glob('models/xgboost_model_*.pkl'):
+        k = int(file.split('_')[-1].split('.')[0])
+        data_k = filtered_data.dataset_k(k+1)
+        with open(file, 'rb') as f:
+            model = pickle.load(f)
 
-
-def binarize_predictions(threshold=0.5):
-    predictions = __load_data()
-    predictions['Predicted Class'] = (
-        predictions['Signal Probability'] >= threshold).astype(int)
-    return predictions
-
-
-def plot_histogram():
-    import filtered_data
-    classes = binarize_predictions(0.5)['Predicted Class']
-    data = filtered_data.raw_data()
-
-    signal_data = data[(classes == 1).values]
-    background_data = data[(classes == 0).values]
-    plt.hist(signal_data['B invariant mass'], bins=100,
-             alpha=0.5, label='Predicted Signal')
-    plt.show()
-
-    plt.hist(background_data['B invariant mass'], bins=100,
-             alpha=0.5, label='Predicted Background')
-    plt.xlabel(r'B candidate mass / MeV/$c^2$')
-    plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+        predictions = model.predict_proba(data_k)[:, 1]
+        plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
+        plt.yscale('log')
     plt.legend()
     plt.show()
 
 
-# %% Predict
-model = __load_model()
+if __name__ == "__main__":
+    predict_all()
