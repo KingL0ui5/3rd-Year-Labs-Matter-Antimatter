@@ -60,6 +60,13 @@ def __task2():
         f"Invariant mass peaks: {__data_2011['dimuon-system invariant mass'][peaks].values}")
 
 
+def raw_data():
+    """
+    Return a copy of the full 2011 dataset.
+    """
+    return __data_2011.copy()
+
+
 def seperated_data(drop_cols: list = None):
     """
     Separate the 2011 dataset into signal and background based on B invariant mass.

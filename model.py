@@ -13,7 +13,6 @@ sns.set_style('darkgrid')
 sns.set_context('paper')
 
 # %% Load Data
-
 sig, bkg = filtered_data.seperated_data(drop_cols=['B invariant mass',
                                         'dimuon-system invariant mass'])
 nSignalTotal = sig.shape[0]
@@ -80,8 +79,5 @@ plt.grid(axis='x', linestyle='--', alpha=0.7)
 
 plt.show()
 
-# %% Save data
-
-df_pred = pd.DataFrame(prediction, columns=[
-                       'Background Probability', 'Signal Probability'])
-df_pred.to_pickle('data/predictions.pkl')
+# %% Save model
+model.save_model('data/xgboost_model.json')
