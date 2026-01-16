@@ -19,6 +19,7 @@ with open('datasets/dataset_2011.pkl', 'rb') as infile:
 
 __data_2011.insert(0, 'index', range(len(__data_2011)))
 
+
 def raw_data():
     """
     Return a copy of the full 2011 dataset.
