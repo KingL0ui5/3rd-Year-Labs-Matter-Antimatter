@@ -16,7 +16,7 @@ def predict_all():
     predictions_all = pd.DataFrame()
     for file in glob.glob('models/xgboost_model_*.pkl'):
         k = int(file.split('_')[-1].split('.')[0])
-        data_k = filtered_data.dataset_k(k+1)
+        data_k = filtered_data.seperate().dataset_k(k+1)
         with open(file, 'rb') as f:
             model = pickle.load(f)
 
@@ -29,13 +29,11 @@ def predict_all():
 
     return predictions
 
-
 def cutoff_ratio(data_series, signal_range):
-    num_sig = np.trapz(data_series[signal_range[0]:signal_range[1]], dx=0.01)
+    num_sig = np.trapezoid(data_series[signal_range[0]:signal_range[1]], dx=0.01)
     num_sigbck = len(data_series)
     weight = num_sig / np.sqrt(num_sigbck)
     return weight
-
 
 def find_optimal_cutoff(data):
     data_series = data['dimuon-system invariant mass']
@@ -59,6 +57,8 @@ def find_optimal_cutoff(data):
                 best_range = (start, end)
     return best_range
 
+data_2011 = pickle.load(open('datasets/dataset_2011.pkl', 'rb'))
 
 if __name__ == "__main__":
-    find_optimal_cutoff('datasets/dataset_2011.pkl')
+    optimal_cutoff = find_optimal_cutoff(data_2011)
+    print(f'Optimal cutoff range indices: {optimal_cutoff}')
