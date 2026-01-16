@@ -35,30 +35,6 @@ def samesign():
     plt.show()
     return data
 
-
-def get_dimuon_peaks(data):
-    """
-    Detect the 2 highest peaks in dimuon-system invariant mass distribution.
-    Returns the indices of the 2 most prominent peaks in the histogram bins.
-    """
-    hist = plt.hist(data['dimuon-system invariant mass'], bins=100)
-    hist_values = hist[0]
-    plt.close()
-    
-    # Find local maxima by looking at where values are greater than neighbors
-    peaks = []
-    for i in range(1, len(hist_values) - 1):
-        if hist_values[i] > hist_values[i-1] and hist_values[i] > hist_values[i+1]:
-            peaks.append((i, hist_values[i]))
-    
-    # Sort by height (descending) and take top 2
-    peaks.sort(key=lambda x: x[1], reverse=True)
-    peaks = [p[0] for p in peaks[:2]]
-    peaks.sort()  # Sort by bin index
-    
-    return peaks, hist
-
-
 class seperate:
     def __init__(self, k: int = None, plot: bool = False):
         """
@@ -110,42 +86,26 @@ class seperate:
             self.__signal_parts = signal
             self.__background_parts = background
 
-    def data(self, drop_cols: list = None, k: int = None):
+    def data(self, drop_cols: list = None,):
         """
         Return the separated signal and background datasets.
         Parameters
         ----------
         drop_cols: list
             List of columns to drop from the datasets.
-        k: int
-            If specified, return only the k-th fold of the datasets.
-        Returns
-        -------
-        signal: pd.DataFrame or list of pd.DataFrame
-            The signal dataset(s).
-        background: pd.DataFrame or list of pd.DataFrame
-            The background dataset(s).
         """
-        signal = self.__signal_parts[k] if k is not None else self.__signal_parts
-        background = self.__background_parts[k] if k is not None else self.__background_parts
+        signal = self.__signal_parts
+        background = self.__background_parts
         if drop_cols:
             signal = signal.drop(columns=drop_cols)
             background = background.drop(columns=drop_cols)
         return signal, background
 
     def dataset_k(self, k):
-        """
-        Return the k-th fold of the (entire) separated dataset with circular indexing behaviour
-        Parameters
-        ----------
-        k: int
-            The fold index to return.
-        Returns
-        -------
-        pd.DataFrame
-            The k-th fold of the dataset.
-        """
-        return self.__datasets[k % len(self.__datasets)]
+        if k >= len(self.__datasets):
+            k = len(self.__datasets) - k
+
+        return self.__datasets[k]
 
 
 # %% Initial B invariant mass filtering
