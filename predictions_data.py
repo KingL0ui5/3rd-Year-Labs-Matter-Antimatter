@@ -10,6 +10,8 @@ import seaborn as sns
 import pickle
 import filtered_data
 import glob
+sns.set_style('darkgrid')
+sns.set_context('paper')
 
 
 def predict_all():

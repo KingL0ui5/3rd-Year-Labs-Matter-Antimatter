@@ -35,12 +35,23 @@ def samesign():
     return data
 
 
+def get_dimuon_peaks(data):
+    """
+    Detect peaks in dimuon-system invariant mass distribution.
+    Returns the indices of peaks in the histogram bins.
+    """
+    hist = plt.hist(data['dimuon-system invariant mass'], bins=100)
+    peaks = find_peaks(hist[0], height=1e3, distance=1, prominence=50)[0]
+    plt.close()
+    return peaks, hist
+
+
 class seperate:
-    def __init__(self, drop_cols: list = None, k: int = None, plot: bool = False):
+    def __init__(self, k: int = None, plot: bool = False):
         """
         Separate the 2011 dataset into signal and background based on B invariant mass.
-        drop_cols: list
-            List of columns to drop from the dataset in addition to correlated ones.
+        Parameters
+        ----------
         k: int
             Number of folds to separate the data into.
         plot: bool
@@ -51,13 +62,14 @@ class seperate:
         self.__datasets = []
 
         dataset = __data_2011.copy()
+
         signal = dataset[dataset['dimuon-system invariant mass'].between(3070, 3200) |
                          dataset['dimuon-system invariant mass'].between(3600, 3750)]
         background = dataset[(dataset['B invariant mass'] > 5400)]
 
         if plot is True:
             hist = plt.hist(signal['dimuon-system invariant mass'], bins=50)
-            plt.xlabel(r'B candidate mass) / MeV/$c^2$')
+            plt.xlabel(r'B candidate mass / MeV/$c^2$')
             plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
             plt.show()
 
@@ -66,10 +78,6 @@ class seperate:
             plt.xlabel(r'B candidate mass / MeV/$c^2$')
             plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
             plt.show()
-
-        if drop_cols:
-            signal = signal.drop(columns=drop_cols)
-            background = background.drop(columns=drop_cols)
 
         if k is not None:
             signal_shuffled = signal.sample(
@@ -89,8 +97,20 @@ class seperate:
             self.__signal_parts = signal
             self.__background_parts = background
 
-    def data(self):
-        return self.__signal_parts, self.__background_parts
+    def data(self, drop_cols: list = None,):
+        """
+        Return the separated signal and background datasets.
+        Parameters
+        ----------
+        drop_cols: list
+            List of columns to drop from the datasets.
+        """
+        signal = self.__signal_parts
+        background = self.__background_parts
+        if drop_cols:
+            signal = signal.drop(columns=drop_cols)
+            background = background.drop(columns=drop_cols)
+        return signal, background
 
     def dataset_k(self, k):
         if k >= len(self.__datasets):
@@ -127,17 +147,6 @@ def __task1():
     plt.show()
 
     #  left with rare decays only
-
-
-def get_dimuon_peaks(data):
-    """
-    Detect peaks in dimuon-system invariant mass distribution.
-    Returns the indices of peaks in the histogram bins.
-    """
-    hist = plt.hist(data['dimuon-system invariant mass'], bins=100)
-    peaks = find_peaks(hist[0], height=1e3, distance=1, prominence=50)[0]
-    plt.close()
-    return peaks, hist
 
 
 def __task2():

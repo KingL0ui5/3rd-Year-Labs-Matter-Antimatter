@@ -17,14 +17,14 @@ models = []
 k = 5
 
 # %% Load Data
-filtered = filtered_data.seperate(drop_cols=['B invariant mass',
-                                             'dimuon-system invariant mass', 'index'], k=k)
+seperation = filtered_data.seperate(drop_cols=['B invariant mass',
+                                               'dimuon-system invariant mass', 'index'], k=k)
 
-sig, bkg = filtered.data()
+sig, bkg = seperation.data()
 
 #  save the filtered object
 with open('data/filtered_data.pkl', 'wb') as f:
-    pickle.dump(filtered, f)
+    pickle.dump(seperation, f)
 
 # %% Model Loop
 
