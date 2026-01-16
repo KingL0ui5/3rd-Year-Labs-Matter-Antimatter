@@ -67,19 +67,35 @@ class seperate:
             plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
             plt.show()
 
-        if k is not None:
-            signal_shuffled = signal.sample(
-                frac=1, random_state=42).reset_index(drop=True)
-            self.__signal_parts = np.array_split(signal_shuffled, k)
+        is_signal = (dataset['dimuon-system invariant mass'].between(3070, 3200) |
+                    dataset['dimuon-system invariant mass'].between(3600, 3750))
+        
+        is_background = (dataset['B invariant mass'] > 5400)
 
-            background_shuffled = background.sample(
-                frac=1, random_state=42).reset_index(drop=True)
-            self.__background_parts = np.array_split(background_shuffled, k)
+        dataset['label'] = -1
+        dataset.loc[is_signal, 'label'] = 1
+        dataset.loc[is_background, 'label'] = 0
+        dataset = dataset[dataset['label'] != -1].reset_index(drop=True)
+
+        if k is not None:
+            data_shuffled = dataset.sample(frac=1, random_state=42).reset_index(drop=True)
+            full_parts = np.array_split(data_shuffled, k)
+
+            self.__datasets = []
+            self.__signal_parts = []
+            self.__background_parts = []
 
             for i in range(k):
-                dataset_k = pd.concat(
-                    [self.__signal_parts[i], self.__background_parts[i]])
-                self.__datasets.append(dataset_k)
+                current_fold = full_parts[i]
+
+                sig_k = current_fold[current_fold['label'] == 1]
+                bkg_k = current_fold[current_fold['label'] == 0]
+                sig_k.drop(columns=['label'], inplace=True)
+                bkg_k.drop(columns=['label'], inplace=True)
+                current_fold.drop(columns=['label'], inplace=True)
+                self.__signal_parts.append(sig_k)
+                self.__background_parts.append(bkg_k)
+                self.__datasets.append(current_fold)
 
         if k is None:
             self.__signal_parts = signal

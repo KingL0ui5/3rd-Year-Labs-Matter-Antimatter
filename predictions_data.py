@@ -35,7 +35,8 @@ def predict_all():
         k = int(file.split('_')[-1].split('.')[0])
 
         # 1. DO NOT drop the mass column here yet
-        data_k = seperation.dataset_k(k+1, drop_cols=['index'])
+        data_k = seperation.dataset_k(k+1, drop_cols=['index', "B invariant mass",
+                                                    'dimuon-system invariant mass'])
 
         with open(file, 'rb') as f:
             model = pickle.load(f)
