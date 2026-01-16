@@ -17,10 +17,10 @@ models = []
 k = 5
 
 # %% Load Data
-seperation = filtered_data.seperate(drop_cols=['B invariant mass',
-                                               'dimuon-system invariant mass', 'index'], k=k)
+seperation = filtered_data.seperate(k=k)
 
-sig, bkg = seperation.data()
+sig, bkg = seperation.data(drop_cols=['B invariant mass',
+                                      'dimuon-system invariant mass', 'index'])
 
 #  save the filtered object
 with open('data/filtered_data.pkl', 'wb') as f:
