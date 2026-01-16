@@ -73,14 +73,13 @@ def determine_signal(data, threshold):
     data.drop(columns=['signal_probability'], inplace=True)
     return data
 
-
 def cutoff_ratio(data_series, signal_range):
-    num_sig = np.trapezoid(
-        data_series[signal_range[0]:signal_range[1]], dx=0.01)
-    num_sigbck = len(data_series)
+    # Filter data_series to values within signal_range
+    filtered = data_series[(data_series >= signal_range[0]) & (data_series <= signal_range[1])]
+    num_sig = len(filtered)  # Count of events in signal range
+    num_sigbck = len(data_series)  # Total events
     weight = num_sig / np.sqrt(num_sigbck)
     return weight
-
 
 def find_optimal_cutoff(data_series, signal_range):
     # Now each event has a probability [0,1] of being signal.
@@ -95,18 +94,28 @@ def find_optimal_cutoff(data_series, signal_range):
     plt.plot(cutoffs, weights)
     plt.xlabel('Cutoff Probability')
     plt.ylabel('S/sqrt(S+B)')
+    plt.yscale('log')
     plt.title('Finding Optimal Cutoff Probability')
     plt.show()
     
     return optimal_cutoff
 
-data_2011 = pickle.load(open('datasets/dataset_2011.pkl', 'rb'))
+def separate_data():
+    all_data = predict_all()
+    optimal_cutoff = find_optimal_cutoff(all_data['signal_probability'], signal_range=(0.6, 1.0))
+    print(f'Optimal Cutoff Probability: {optimal_cutoff}')
+    final_data = determine_signal(all_data, optimal_cutoff)
+    # We histogram the final classified data
+    plt.hist(final_data[final_data['signal'] == 1]['B invariant mass'], bins=100, alpha=0.5, label='Classified Signal')
+    plt.hist(final_data[final_data['signal'] == 0]['B invariant mass'], bins=100, alpha=0.5, label='Classified Background')
+    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+    plt.yscale('log')
+    plt.legend()
+    plt.show()
+    # Save final classified data
+    final_data.to_csv('data/final_classified_data.csv', index=False)
+    print('Final classified data saved to data/final_classified_data.csv')
 
 if __name__ == "__main__":
-    all_data = predict_all()
-    print(all_data)
-    #optimal_cutoff = find_optimal_cutoff(all_data['signal_probability'], signal_range=(0.6, 1.0))
-    #print(f'Optimal Cutoff Probability: {optimal_cutoff}')
-    #final_data = determine_signal(all_data, optimal_cutoff)
-    #final_data.to_csv('data/final_classified_data.csv', index=False)
-    #print('Final classified data saved to data/final_classified_data.csv')
+    separate_data()
