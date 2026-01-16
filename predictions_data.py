@@ -8,7 +8,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
-import filtered_data
 import glob
 sns.set_style('darkgrid')
 sns.set_context('paper')
@@ -16,7 +15,21 @@ sns.set_context('paper')
 with open('data/filtered_data.pkl', 'rb') as f:
     seperation = pickle.load(f)
 
+
 def predict_all():
+    """
+    Run predictions for all k folded models in 'models/' directory, using the seperation object stored in 'data/filtered_data.pkl'.
+    Returns a DataFrame of the entire dataset combined with the predicted signal probabilities in column 'signal_probability'.
+
+    Parameters
+    ----------
+    None
+    -------
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame containing the entire dataset with an additional column 'signal_probability' for predicted signal probabilities
+    """
     dataset = []
     for file in glob.glob('models/xgboost_model_*.pkl'):
         k = int(file.split('_')[-1].split('.')[0])
@@ -41,6 +54,24 @@ def predict_all():
 
     return all_data
 
+
+def determine_signal(data, threshold):
+    """
+    Determine signal events based on a probability threshold.
+    Assigns 1 if it is signal, and 0 if it is background in the new 'signal column'
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        DataFrame containing 'signal_probability' column.
+    threshold : float
+        Probability threshold to classify signal events.    
+    """
+    data['signal'] = (data['signal_probability'] >= threshold).astype(int)
+    data.drop(columns=['signal_probability'], inplace=True)
+    return data
+
+
 def cutoff_ratio(data_series, signal_range):
     num_sig = np.trapezoid(
         data_series[signal_range[0]:signal_range[1]], dx=0.01)
@@ -48,8 +79,9 @@ def cutoff_ratio(data_series, signal_range):
     weight = num_sig / np.sqrt(num_sigbck)
     return weight
 
+
 def find_optimal_cutoff(data_series, signal_range):
-    # Now each event has a probability [0,1] of being signal. 
+    # Now each event has a probability [0,1] of being signal.
     # We want to find the cutoff that maximises S/sqrt(S+B)
     cutoffs = np.linspace(0, 1, 100)
     weights = []
@@ -63,6 +95,7 @@ def find_optimal_cutoff(data_series, signal_range):
     plt.ylabel('S/sqrt(S+B)')
     plt.title('Finding Optimal Cutoff Probability')
     plt.show()
+
 
 data_2011 = pickle.load(open('datasets/dataset_2011.pkl', 'rb'))
 
