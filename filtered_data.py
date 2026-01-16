@@ -17,8 +17,6 @@ sns.set_palette("colorblind")
 with open('datasets/dataset_2011.pkl', 'rb') as infile:
     _data_2011 = pickle.load(infile)
 
-_data_2011.insert(0, 'index', range(len(_data_2011)))
-
 
 def raw_data():
     """

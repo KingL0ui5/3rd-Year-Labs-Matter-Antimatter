@@ -35,10 +35,11 @@ def predict_all():
         k = int(file.split('_')[-1].split('.')[0])
 
         data_k = seperation.dataset_k(k+1, drop_cols=['B invariant mass',
-                                                      'dimuon-system invariant mass', 'index'])
+                                                      'dimuon-system invariant mass'])
 
         with open(file, 'rb') as f:
             model = pickle.load(f)
+
         predictions = model.predict_proba(data_k)[:, 1]
         plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
 
@@ -52,6 +53,7 @@ def predict_all():
     plt.show()
 
     all_data = pd.concat(dataset, ignore_index=True)
+    print(all_data.info())
 
     return all_data
 

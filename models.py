@@ -20,7 +20,7 @@ k = 5
 seperation = filtered_data.seperate(k=k)
 
 sig, bkg = seperation.data(drop_cols=['B invariant mass',
-                                      'dimuon-system invariant mass', 'index'])
+                                      'dimuon-system invariant mass'])
 
 #  save the filtered object
 with open('data/filtered_data.pkl', 'wb') as f:
