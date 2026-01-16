@@ -42,8 +42,8 @@ def predict_all():
         predictions = model.predict_proba(data_k)[:, 1]
         plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
 
-        pd.merge(data_k, pd.DataFrame(predictions, columns=['signal_probability']),
-                 left_index=True, right_index=True)
+        data_k = pd.merge(data_k, pd.DataFrame(predictions, columns=['signal_probability']),
+                          left_index=True, right_index=True)
 
         df_fold = pd.DataFrame(data_k)
         dataset.append(df_fold)
@@ -54,7 +54,6 @@ def predict_all():
     all_data = pd.concat(dataset, ignore_index=True)
 
     return all_data
-
 
 def determine_signal(data, threshold):
     """
@@ -96,9 +95,16 @@ def find_optimal_cutoff(data_series, signal_range):
     plt.ylabel('S/sqrt(S+B)')
     plt.title('Finding Optimal Cutoff Probability')
     plt.show()
-
+    
+    return optimal_cutoff
 
 data_2011 = pickle.load(open('datasets/dataset_2011.pkl', 'rb'))
 
 if __name__ == "__main__":
-    predict_all()
+    all_data = predict_all()
+    print(all_data)
+    #optimal_cutoff = find_optimal_cutoff(all_data['signal_probability'], signal_range=(0.6, 1.0))
+    #print(f'Optimal Cutoff Probability: {optimal_cutoff}')
+    #final_data = determine_signal(all_data, optimal_cutoff)
+    #final_data.to_csv('data/final_classified_data.csv', index=False)
+    #print('Final classified data saved to data/final_classified_data.csv')
