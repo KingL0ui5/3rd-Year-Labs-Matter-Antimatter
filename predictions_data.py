@@ -113,18 +113,15 @@ def find_optimal_cutoff(data_series, signal_range):
 
     return optimal_cutoff
 
-
-def separate_data():
+def separate_data(feature='B invariant mass'):
     all_data = predict_all()
     optimal_cutoff = find_optimal_cutoff(
         all_data['signal_probability'], signal_range=(0.6, 1.0))
     print(f'Optimal Cutoff Probability: {optimal_cutoff}')
     final_data = determine_signal(all_data, optimal_cutoff)
     # We histogram the final classified data
-    plt.hist(final_data[final_data['signal'] == 1]['B invariant mass'],
-             bins=100, alpha=0.5, label='Classified Signal')
-    plt.hist(final_data[final_data['signal'] == 0]['B invariant mass'],
-             bins=100, alpha=0.5, label='Classified Background')
+    plt.hist(final_data[final_data['signal'] == 1][feature], bins=100, alpha=0.5, label='Classified Signal')
+    plt.hist(final_data[final_data['signal'] == 0][feature], bins=100, alpha=0.5, label='Classified Background')
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
     plt.yscale('log')
@@ -133,7 +130,39 @@ def separate_data():
     # Save final classified data
     final_data.to_csv('data/final_classified_data.csv', index=False)
     print('Final classified data saved to data/final_classified_data.csv')
+    return final_data
 
+def analyze_k_mu_system(data):
+    """
+    Calculates K+mu- invariant mass and visualizes the spectrum.
+    """
+    e_sum = data['Kaon 4-momentum energy component'] + \
+            data['Opposite-sign muon 4-momentum energy component']
+    
+    px_sum = data['Kaon 4-momentum x component'] + \
+             data['Opposite-sign muon 4-momentum x component']
+    
+    py_sum = data['Kaon 4-momentum y component'] + \
+             data['Opposite-sign muon 4-momentum y component']
+    
+    pz_sum = data['Kaon 4-momentum z component'] + \
+             data['Opposite-sign muon 4-momentum z component']
+
+    p_squared = px_sum**2 + py_sum**2 + pz_sum**2
+    k_mu_mass = np.sqrt(np.maximum(e_sum**2 - p_squared, 0))
+    
+    data['k_mu_invariant_mass'] = k_mu_mass
+
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=data[data['signal'] == 1], x='k_mu_invariant_mass', 
+                 bins=100, color='blue', label='Signal-like Candidates', kde=True)
+    plt.xlabel(r'$K^+\mu^-$ Invariant Mass [MeV/$c^2$]')
+    plt.ylabel('Candidates')
+    plt.title('Invariant Mass Spectrum of $K^+\mu^-$ System')
+    plt.legend()
+    plt.show()
 
 if __name__ == "__main__":
-    separate_data()
+    all_data = predict_all()
+    final_data = separate_data()
+    analyze_k_mu_system(final_data)
