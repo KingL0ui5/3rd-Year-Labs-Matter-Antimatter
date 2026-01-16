@@ -68,8 +68,8 @@ class seperate:
             plt.show()
 
         is_signal = (dataset['dimuon-system invariant mass'].between(3070, 3200) |
-                    dataset['dimuon-system invariant mass'].between(3600, 3750))
-        
+                     dataset['dimuon-system invariant mass'].between(3600, 3750))
+
         is_background = (dataset['B invariant mass'] > 5400)
 
         dataset['label'] = -1
@@ -78,7 +78,8 @@ class seperate:
         dataset = dataset[dataset['label'] != -1].reset_index(drop=True)
 
         if k is not None:
-            data_shuffled = dataset.sample(frac=1, random_state=42).reset_index(drop=True)
+            data_shuffled = dataset.sample(
+                frac=1, random_state=42).reset_index(drop=True)
             full_parts = np.array_split(data_shuffled, k)
 
             self.__datasets = []
@@ -90,9 +91,9 @@ class seperate:
 
                 sig_k = current_fold[current_fold['label'] == 1]
                 bkg_k = current_fold[current_fold['label'] == 0]
-                sig_k.drop(columns=['label'], inplace=True)
-                bkg_k.drop(columns=['label'], inplace=True)
-                current_fold.drop(columns=['label'], inplace=True)
+                sig_k = sig_k.drop(columns=['label'])
+                bkg_k = bkg_k.drop(columns=['label'])
+                current_fold = current_fold.drop(columns=['label'])
                 self.__signal_parts.append(sig_k)
                 self.__background_parts.append(bkg_k)
                 self.__datasets.append(current_fold)
