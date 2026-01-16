@@ -63,6 +63,15 @@ def find_optimal_cutoff(data):
             if weight > best_weight:
                 best_weight = weight
                 best_range = (start, end)
+    
+    data_series.plot(kind='hist', bins=100, alpha=0.5)
+    plt.axvspan(data_series.iloc[best_range[0]], data_series.iloc[best_range[1]], color='red', alpha=0.3,
+                label='Optimal Cutoff Range')
+    plt.xlabel('dimuon-system invariant mass / MeV/c^2')
+    plt.ylabel('Candidates')
+    plt.legend()
+    plt.show()
+
     return best_range
 
 
