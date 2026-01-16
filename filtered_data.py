@@ -38,12 +38,24 @@ def samesign():
 
 def get_dimuon_peaks(data):
     """
-    Detect peaks in dimuon-system invariant mass distribution.
-    Returns the indices of peaks in the histogram bins.
+    Detect the 2 highest peaks in dimuon-system invariant mass distribution.
+    Returns the indices of the 2 most prominent peaks in the histogram bins.
     """
     hist = plt.hist(data['dimuon-system invariant mass'], bins=100)
-    peaks = find_peaks(hist[0], height=1e3, distance=1, prominence=50)[0]
+    hist_values = hist[0]
     plt.close()
+    
+    # Find local maxima by looking at where values are greater than neighbors
+    peaks = []
+    for i in range(1, len(hist_values) - 1):
+        if hist_values[i] > hist_values[i-1] and hist_values[i] > hist_values[i+1]:
+            peaks.append((i, hist_values[i]))
+    
+    # Sort by height (descending) and take top 2
+    peaks.sort(key=lambda x: x[1], reverse=True)
+    peaks = [p[0] for p in peaks[:2]]
+    peaks.sort()  # Sort by bin index
+    
     return peaks, hist
 
 
