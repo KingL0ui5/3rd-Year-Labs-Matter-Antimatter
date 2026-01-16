@@ -112,11 +112,23 @@ class seperate:
 
         return signal, background
 
-    def dataset_k(self, k):
-        if k >= len(self.__datasets):
-            k = len(self.__datasets) - k
+    def dataset_k(self, k, drop_cols: list = None):
+        """
+        Return the k-th fold of the separated dataset.
 
-        return self.__datasets[k]
+        Parameters
+        ----------
+        k: int
+            The fold index to return.
+        drop_cols: list (optional)
+            List of columns to drop from the returned dataframe.
+        """
+        idx = k % len(self.__datasets)
+
+        df = self.__datasets[idx]
+        if drop_cols:
+            return df.drop(columns=drop_cols, errors='ignore')
+        return df
 
 
 # %% Initial B invariant mass filtering

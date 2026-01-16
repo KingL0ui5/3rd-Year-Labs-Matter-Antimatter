@@ -34,7 +34,8 @@ def predict_all():
     for file in glob.glob('models/xgboost_model_*.pkl'):
         k = int(file.split('_')[-1].split('.')[0])
 
-        data_k = seperation.dataset_k(k+1)
+        data_k = seperation.dataset_k(k+1, drop_cols=['B invariant mass',
+                                                      'dimuon-system invariant mass', 'index'])
 
         with open(file, 'rb') as f:
             model = pickle.load(f)
