@@ -34,27 +34,23 @@ def predict_all():
     for file in glob.glob('models/xgboost_model_*.pkl'):
         k = int(file.split('_')[-1].split('.')[0])
 
-        data_k = seperation.dataset_k(k+1, drop_cols=['B invariant mass',
-                                                      'dimuon-system invariant mass'])
+        # 1. DO NOT drop the mass column here yet
+        data_k = seperation.dataset_k(k+1, drop_cols=['index'])
 
         with open(file, 'rb') as f:
             model = pickle.load(f)
-
-        predictions = model.predict_proba(data_k)[:, 1]
-        plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
-
-        data_k = pd.merge(data_k, pd.DataFrame(predictions, columns=['signal_probability']),
-                          left_index=True, right_index=True)
-
-        df_fold = pd.DataFrame(data_k)
-        dataset.append(df_fold)
-
-    plt.legend()
-    plt.show()
+            
+        # 2. Drop the mass columns ONLY for the prediction call
+        # This keeps data_k intact but gives the model only the features it expects
+        features_for_model = data_k.drop(columns=['B invariant mass', 'dimuon-system invariant mass'])
+        predictions = model.predict_proba(features_for_model)[:, 1]
+        
+        # 3. Attach predictions to the original data_k (which still has the mass)
+        data_k['signal_probability'] = predictions
+        
+        dataset.append(data_k)
 
     all_data = pd.concat(dataset, ignore_index=True)
-    print(all_data.info())
-
     return all_data
 
 def determine_signal(data, threshold):
@@ -82,22 +78,30 @@ def cutoff_ratio(data_series, signal_range):
     return weight
 
 def find_optimal_cutoff(data_series, signal_range):
-    # Now each event has a probability [0,1] of being signal.
-    # We want to find the cutoff that maximises S/sqrt(S+B)
     cutoffs = np.linspace(0, 1, 100)
     weights = []
+
     for cutoff in cutoffs:
-        filtered = data_series[data_series >= cutoff]
-        weight = cutoff_ratio(filtered, signal_range)
+        filtered_probs = data_series[data_series >= cutoff]
+        weight = cutoff_ratio(filtered_probs, signal_range)
         weights.append(weight)
+
     optimal_cutoff = cutoffs[np.argmax(weights)]
-    plt.plot(cutoffs, weights)
+    plot_limit = 91
+
+    plt.figure(figsize=(8, 5))
+    plt.plot(cutoffs[:plot_limit], weights[:plot_limit], label='Significance Curve')
+    if optimal_cutoff <= 0.9:
+        plt.axvline(optimal_cutoff, color='red', linestyle='--', 
+                    label=f'Optimum: {optimal_cutoff:.2f}')
     plt.xlabel('Cutoff Probability')
-    plt.ylabel('S/sqrt(S+B)')
+    plt.ylabel(r'$S/\sqrt{S+B}$')
     plt.yscale('log')
-    plt.title('Finding Optimal Cutoff Probability')
+    plt.title('Finding Optimal Cutoff Probability (up to 0.9)')
+    plt.legend()
+    plt.grid(True, which="both", ls="-", alpha=0.2)
     plt.show()
-    
+
     return optimal_cutoff
 
 def separate_data():
