@@ -98,26 +98,42 @@ class seperate:
             self.__signal_parts = signal
             self.__background_parts = background
 
-    def data(self, drop_cols: list = None,):
+    def data(self, drop_cols: list = None, k: int = None):
         """
         Return the separated signal and background datasets.
         Parameters
         ----------
         drop_cols: list
             List of columns to drop from the datasets.
+        k: int
+            If specified, return only the k-th fold of the datasets.
+        Returns
+        -------
+        signal: pd.DataFrame or list of pd.DataFrame
+            The signal dataset(s).
+        background: pd.DataFrame or list of pd.DataFrame
+            The background dataset(s).
         """
-        signal = self.__signal_parts
-        background = self.__background_parts
+        signal = self.__signal_parts[k] if k is not None else self.__signal_parts
+        background = self.__background_parts[k] if k is not None else self.__background_parts
         if drop_cols:
             signal = signal.drop(columns=drop_cols)
             background = background.drop(columns=drop_cols)
         return signal, background
 
     def dataset_k(self, k):
-        if k >= len(self.__datasets):
-            k = len(self.__datasets) - k
-
-        return self.__datasets[k]
+        """
+        Return the k-th fold of the (entire) separated dataset with circular indexing behaviour
+        Parameters
+        ----------
+        k: int
+            The fold index to return.
+        Returns
+        -------
+        pd.DataFrame
+            The k-th fold of the dataset.
+        """
+        return self.__datasets[k % len(self.__datasets)]
 
 
 # %% Initial B invariant mass filtering

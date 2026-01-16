@@ -18,21 +18,29 @@ with open('data/filtered_data.pkl', 'rb') as f:
 
 
 def predict_all():
-    predictions_all = pd.DataFrame()
+    dataset = []
     for file in glob.glob('models/xgboost_model_*.pkl'):
         k = int(file.split('_')[-1].split('.')[0])
+
         data_k = seperation.dataset_k(k+1)
+
         with open(file, 'rb') as f:
             model = pickle.load(f)
-
         predictions = model.predict_proba(data_k)[:, 1]
         plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
-        plt.yscale('log')
-        predictions_all = pd.concat(predictions_all)
+
+        pd.merge(data_k, pd.DataFrame(predictions, columns=['signal_probability']),
+                 left_index=True, right_index=True)
+
+        df_fold = pd.DataFrame(data_k)
+        dataset.append(df_fold)
+
     plt.legend()
     plt.show()
 
-    return predictions
+    all_data = pd.concat(dataset, ignore_index=True)
+
+    return all_data
 
 
 def cutoff_ratio(data_series, signal_range):
