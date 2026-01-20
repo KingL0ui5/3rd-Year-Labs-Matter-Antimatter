@@ -252,44 +252,10 @@ def plot_resulting_dimuon_masses(data):
     plt.title('Dimuon System Invariant Mass Spectrum After Background Cleaning')
     plt.show()
 
-
-def compute_dimuon_cpasy(data):
-    # Ensure we have the weights from the previous background fit
-    # Standard J/psi window
-    jpsi_mask = data['dimuon-system invariant mass'].between(3000, 3150)
-    pos_events = data[jpsi_mask & (data['B assumed particle type'] > 0)]
-    neg_events = data[jpsi_mask & (data['B assumed particle type'] < 0)]
-
-    yield_pos_jpsi = pos_events['event_weight'].sum()
-    yield_neg_jpsi = neg_events['event_weight'].sum()
-
-    # We do the same for the psi(2S) window, separate to the J/psi
-    # Standard psi(2S) window
-    psi2s_mask = data['dimuon-system invariant mass'].between(3600, 3750)
-    pos_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] > 0)]
-    neg_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] < 0)]
-    yield_pos_psi2s = pos_events_psi2s['event_weight'].sum()
-    yield_neg_psi2s = neg_events_psi2s['event_weight'].sum()
-
-    if (yield_pos_jpsi + yield_neg_jpsi) == 0:
-        return 0
-
-    if (yield_pos_psi2s + yield_neg_psi2s) == 0:
-        return 0
-
-    cp_asymmetry_Jpsi = (yield_pos_jpsi - yield_neg_jpsi) / \
-        (yield_pos_jpsi + yield_neg_jpsi)
-    cp_asymmetry_psi2s = (yield_pos_psi2s - yield_neg_psi2s) / \
-        (yield_pos_psi2s + yield_neg_psi2s)
-
-    print(f'Signal Yield (B+ J/psi): {yield_pos_jpsi:.2f}')
-    print(f'Signal Yield (B- J/psi): {yield_neg_jpsi:.2f}')
-    print(f'Signal Yield (B+ psi(2S)): {yield_pos_psi2s:.2f}')
-    print(f'Signal Yield (B- psi(2S)): {yield_neg_psi2s:.2f}')
-    print(f'CP Asymmetry (J/psi): {cp_asymmetry_Jpsi:.4f}')
-    print(f'CP Asymmetry (psi(2S)): {cp_asymmetry_psi2s:.4f}')
-
-    return cp_asymmetry_Jpsi, cp_asymmetry_psi2s
+def main():
+    data = separate_data()
+    cleaned_data = background_fit_cleaning(data)
+    return cleaned_data
 
 
 def save_cleaned_data(dataset_name):
@@ -303,8 +269,7 @@ def save_cleaned_data(dataset_name):
 
 
 if __name__ == "__main__":
-    save_cleaned_data(dataset_name)
-    final_data = separate_data()
-    peak = background_fit_cleaning(final_data)
-    plot_resulting_dimuon_masses(peak)
-    compute_dimuon_cpasy(peak)
+    data = separate_data()
+    cleaned_data = background_fit_cleaning(data)
+    analyze_k_mu_system(cleaned_data)
+    plot_resulting_dimuon_masses(cleaned_data)

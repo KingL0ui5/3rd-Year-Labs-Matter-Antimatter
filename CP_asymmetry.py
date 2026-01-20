@@ -47,7 +47,8 @@ def count_B_mesons(data):
     return total_B, total_B_plus, total_B_minus
 
 
-def compute_asymmetry(data):
+def compute_b_asymmetry():
+    data = __load_signal_data()
     total_B, total_B_plus, total_B_minus = count_B_mesons(data)
     print(f"Total number of B mesons: {total_B}")
     print(f"Total number of B+ mesons: {total_B_plus}")
@@ -55,6 +56,42 @@ def compute_asymmetry(data):
     print(
         f"CP Asymmetry: {(total_B_plus - total_B_minus) / (total_B_plus + total_B_minus):.4f}")
 
+def compute_dimuon_asymmetry():
+    data = __load_signal_data()
+    # Ensure we have the weights from the previous background fit
+    jpsi_mask = data['dimuon-system invariant mass'].between(3000, 3150) # Standard J/psi window
+    pos_events = data[jpsi_mask & (data['B assumed particle type'] > 0)]
+    neg_events = data[jpsi_mask & (data['B assumed particle type'] < 0)]
+
+    yield_pos_jpsi = pos_events['event_weight'].sum()
+    yield_neg_jpsi = neg_events['event_weight'].sum()
+
+    # We do the same for the psi(2S) window, separate to the J/psi
+    psi2s_mask = data['dimuon-system invariant mass'].between(3600, 3750) # Standard psi(2S) window
+    pos_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] > 0)]
+    neg_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] < 0)]
+    yield_pos_psi2s = pos_events_psi2s['event_weight'].sum()
+    yield_neg_psi2s = neg_events_psi2s['event_weight'].sum()
+
+    if (yield_pos_jpsi + yield_neg_jpsi) == 0:
+        return 0
+    
+    if (yield_pos_psi2s + yield_neg_psi2s) == 0:
+        return 0
+
+    cp_asymmetry_Jpsi = (yield_pos_jpsi - yield_neg_jpsi) / (yield_pos_jpsi + yield_neg_jpsi)
+    cp_asymmetry_psi2s = (yield_pos_psi2s - yield_neg_psi2s) / (yield_pos_psi2s + yield_neg_psi2s)
+
+    print(f'Signal Yield (B+ J/psi): {yield_pos_jpsi:.2f}')
+    print(f'Signal Yield (B- J/psi): {yield_neg_jpsi:.2f}')
+    print(f'Signal Yield (B+ psi(2S)): {yield_pos_psi2s:.2f}')
+    print(f'Signal Yield (B- psi(2S)): {yield_neg_psi2s:.2f}')
+    print(f'CP Asymmetry (J/psi): {cp_asymmetry_Jpsi:.4f}')
+    print(f'CP Asymmetry (psi(2S)): {cp_asymmetry_psi2s:.4f}')
+
+    return cp_asymmetry_Jpsi, cp_asymmetry_psi2s
 
 if __name__ == "__main__":
-    pass
+    data = __load_simulation_data()
+    compute_b_asymmetry()
+    compute_dimuon_asymmetry()
