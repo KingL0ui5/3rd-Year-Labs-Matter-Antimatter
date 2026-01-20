@@ -172,30 +172,37 @@ def analyze_k_mu_system(data):
     plt.legend()
     plt.show()
 
+
 def background_fit_cleaning(data):
     data = data[data['signal'] == 1].copy()
     data = data[data['B invariant mass'] >= 5200].reset_index(drop=True)
 
-    bg_mask = (data['B invariant mass'] > 5400) & (data['B invariant mass'] < 6500)
+    bg_mask = (data['B invariant mass'] > 5400) & (
+        data['B invariant mass'] < 6500)
     background_data = data[bg_mask]
 
-    hist_bg, bin_edges_bg = np.histogram(background_data['B invariant mass'], bins=50)
+    hist_bg, bin_edges_bg = np.histogram(
+        background_data['B invariant mass'], bins=50)
     bin_centers_bg = (bin_edges_bg[:-1] + bin_edges_bg[1:]) / 2
 
     x_offset = 5400
+
     def exp_func(x, a, b, c):
         return a * np.exp(b * x) + c
 
-    popt, _ = curve_fit(exp_func, bin_centers_bg - x_offset, hist_bg, p0=[hist_bg[0], -0.005, 0.5])
+    popt, _ = curve_fit(exp_func, bin_centers_bg - x_offset,
+                        hist_bg, p0=[hist_bg[0], -0.005, 0.5])
 
     ref_bins = 100
     ref_range = (5200, 6500)
-    counts, bin_edges = np.histogram(data['B invariant mass'], bins=ref_bins, range=ref_range)
+    counts, bin_edges = np.histogram(
+        data['B invariant mass'], bins=ref_bins, range=ref_range)
     bin_width = bin_edges[1] - bin_edges[0]
     scale_factor = bin_width / (bin_edges_bg[1] - bin_edges_bg[0])
 
     def get_bg_weight(mass):
-        bg_level = exp_func(mass - x_offset, popt[0]*scale_factor, popt[1], popt[2]*scale_factor)
+        bg_level = exp_func(
+            mass - x_offset, popt[0]*scale_factor, popt[1], popt[2]*scale_factor)
         bin_idx = np.digitize(mass, bin_edges) - 1
         bin_idx = np.clip(bin_idx, 0, ref_bins - 1)
         total_in_bin = counts[bin_idx]
@@ -209,11 +216,12 @@ def background_fit_cleaning(data):
 
     _, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
 
-    ax1.hist(data['B invariant mass'], bins=ref_bins, range=ref_range, alpha=0.5, label='Raw Data')
+    ax1.hist(data['B invariant mass'], bins=ref_bins,
+             range=ref_range, alpha=0.5, label='Raw Data')
     x_plot = np.linspace(5200, 6500, 500)
     ax1.plot(x_plot, exp_func(x_plot - x_offset, popt[0]*scale_factor,
                               popt[1], popt[2]*scale_factor),
-                              color='red', label='Background Model')
+             color='red', label='Background Model')
     ax1.set_yscale('log')
     ax1.legend()
 
@@ -227,6 +235,15 @@ def background_fit_cleaning(data):
 
     return data
 
-if __name__ == "__main__":
+
+def main():
+    """
+    Produces final cleaned data.
+    """
     final_data = separate_data()
-    background_fit_cleaning(final_data)
+    cleaned_data = background_fit_cleaning(final_data)
+    return cleaned_data
+
+
+if __name__ == "__main__":
+    main()
