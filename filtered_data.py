@@ -14,30 +14,41 @@ sns.set_context('paper')
 sns.set_palette("colorblind")
 
 
-with open('datasets/dataset_2011.pkl', 'rb') as infile:
-    _data_2011 = pickle.load(infile)
-
-# print('\n'.join(_data_2011.keys()))
-
-
-def raw_data():
+def load_magnet_data():
     """
-    Return a copy of the full 2011 dataset.
+    Load the 2012 datasets for Magnet Up and Magnet Down.
+    Returns:
+    magnet_up_data : pd.DataFrame
+        The dataset for Magnet Up.
+    magnet_down_data : pd.DataFrame
+        The dataset for Magnet Down.
     """
-    return _data_2011.copy()
+    with open('datasets/dataset_2012_MagnetUp.pkl', 'rb') as infile:
+        magnet_up_data = pickle.load(infile)
+
+    with open('datasets/dataset_2012_MagnetDown.pkl', 'rb') as infile:
+        magnet_down_data = pickle.load(infile)
+
+    return magnet_up_data, magnet_down_data
 
 
-def samesign():
-    data = _data_2011['Same-sign muon assumed particle type']
-    hist = plt.hist(data, bins=150)
-    plt.xlabel(r'Same-sign muon invariant mass / MeV/$c^2$')
-    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
-    plt.show()
-    return data
+def load_2011_data():
+    """
+    Load the full 2011 dataset.
+    Returns:
+    data_2011 : pd.DataFrame
+        The full 2011 dataset.
+    """
+    with open('datasets/dataset_2011.pkl', 'rb') as infile:
+        dataset_2011 = pickle.load(infile)
+
+    return dataset_2011
+
+    # print('\n'.join(dataset.keys()))
 
 
 class seperate:
-    def __init__(self, k: int = None, plot: bool = False):
+    def __init__(self, k: int = None, plot: bool = False, dataset: str = '2011'):
         """
         Separate the 2011 dataset into signal and background based on B invariant mass.
         Parameters
@@ -48,10 +59,22 @@ class seperate:
             Whether to plot the histograms of the signal and background datasets.
         """
         # from correlation import drop_correlated
-        # dataset = drop_correlated('B invariant mass', __data_2011, threshold=0.5)
-        self.__datasets = []
+        # dataset = drop_correlated('B invariant mass', _dataset, threshold=0.5)
+        self.__splits = []
 
-        dataset = _data_2011.copy()
+        self.__dataset = dataset
+        if dataset == '2011':
+            dataset = load_2011_data()
+
+        elif dataset == '2012':
+            dataset_up, dataset_down = load_magnet_data()
+            dataset_up['polarity'] = 1
+            dataset_down['polarity'] = 0
+
+            dataset = pd.concat([dataset_up, dataset_down], ignore_index=True)
+        else:
+            raise ValueError(
+                "dataset must be either '2011' or '2012'")
 
         signal = dataset[dataset['dimuon-system invariant mass'].between(3070, 3200) |
                          dataset['dimuon-system invariant mass'].between(3600, 3750)]
@@ -84,7 +107,7 @@ class seperate:
                 frac=1, random_state=42).reset_index(drop=True)
             full_parts = np.array_split(data_shuffled, k)
 
-            self.__datasets = []
+            self.__splits = []
             self.__signal_parts = []
             self.__background_parts = []
 
@@ -98,7 +121,7 @@ class seperate:
                 current_fold = current_fold.drop(columns=['label'])
                 self.__signal_parts.append(sig_k)
                 self.__background_parts.append(bkg_k)
-                self.__datasets.append(current_fold)
+                self.__splits.append(current_fold)
 
         if k is None:
             self.__signal_parts = signal
@@ -140,37 +163,51 @@ class seperate:
         drop_cols: list (optional)
             List of columns to drop from the returned dataframe.
         """
-        idx = k % len(self.__datasets)
+        idx = k % len(self.__splits)
 
-        df = self.__datasets[idx]
+        df = self.__splits[idx]
         if drop_cols:
             return df.drop(columns=drop_cols, errors='ignore')
         return df
 
+    def which_dataset(self):
+        return self.__dataset
+
+
+def samesign():
+    dataset = load_2011_data()
+    data = dataset['Same-sign muon assumed particle type']
+    hist = plt.hist(data, bins=150)
+    plt.xlabel(r'Same-sign muon invariant mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+    plt.show()
+    return data
+
 
 # %% Initial B invariant mass filtering
 def __task1():
-    hist = plt.hist(_data_2011['B invariant mass'], bins=100)
+    dataset = load_2011_data()
+    hist = plt.hist(dataset['B invariant mass'], bins=100)
     peaks = find_peaks(hist[0], height=1e5)[0]
-    plt.vlines(_data_2011['B invariant mass'][peaks], 0, max(hist[0]),
+    plt.vlines(dataset['B invariant mass'][peaks], 0, max(hist[0]),
                colors='r', linestyles='dashed', label='peaks')
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
 
     print(
-        f"B invariant mass peaks: {_data_2011['B invariant mass'][peaks].values}")
+        f"B invariant mass peaks: {dataset['B invariant mass'][peaks].values}")
 
     #  remove charm anticharm meson J/psi (dominanat interaction)
-    plt.hist(_data_2011[abs(_data_2011['dimuon-system invariant mass'] -
-                            3097) > 100]['B invariant mass'], bins=100)
+    plt.hist(dataset[abs(dataset['dimuon-system invariant mass'] -
+                         3097) > 100]['B invariant mass'], bins=100)
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
 
     #  remove charm anticharm meson J/psi and psi(2S) (other dominanat interaction)
-    plt.hist(_data_2011[(abs(_data_2011['dimuon-system invariant mass'] - 3097) > 100) &
-                        (abs(_data_2011['dimuon-system invariant mass'] - 3686) > 100)]['B invariant mass'], bins=100)
+    plt.hist(dataset[(abs(dataset['dimuon-system invariant mass'] - 3097) > 100) &
+                     (abs(dataset['dimuon-system invariant mass'] - 3686) > 100)]['B invariant mass'], bins=100)
     plt.xlabel(r'B candidate mass / MeV/$c^2$')
     plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
     plt.show()
@@ -179,11 +216,12 @@ def __task1():
 
 
 def __task2():
-    hist = plt.hist(_data_2011['dimuon-system invariant mass'], bins=100)
+    dataset = load_2011_data()
+    hist = plt.hist(dataset['dimuon-system invariant mass'], bins=100)
 
     peaks = find_peaks(hist[0], height=1e3, distance=1, prominence=50)[0]
 
-    plt.vlines(_data_2011['dimuon-system invariant mass'][peaks], 0, max(hist[0]),
+    plt.vlines(dataset['dimuon-system invariant mass'][peaks], 0, max(hist[0]),
                colors='r', linestyles='dashed', label='peaks')
 
     plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
@@ -191,4 +229,4 @@ def __task2():
     plt.show()
 
     print(
-        f"Invariant mass peaks: {_data_2011['dimuon-system invariant mass'][peaks].values}")
+        f"Invariant mass peaks: {dataset['dimuon-system invariant mass'][peaks].values}")

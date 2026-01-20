@@ -29,16 +29,6 @@ def __load_simulation_data():
     return JpsiK_data, Kmumu_data
 
 
-def __load_magnet_data():
-    with open('datasets/dataset_2012_MagnetUp.pkl', 'rb') as infile:
-        magnet_up_data = pickle.load(infile)
-
-    with open('datasets/dataset_2012_MagnetDown.pkl', 'rb') as infile:
-        magnet_down_data = pickle.load(infile)
-
-    return magnet_up_data, magnet_down_data
-
-
 def count_B_mesons(data):
     """
     Count the total number of B mesons in the dataset, and seperate them into B+ and B- mesons.
@@ -51,14 +41,13 @@ def count_B_mesons(data):
         Total number of B- mesons in the dataset
     """
     total_B = data.shape[0]
-    total_B_plus = data[data['B assumed particle type'] > 0].shape[0]
-    total_B_minus = data[data['B assumed particle type'] < 0].shape[0]
+    total_B_plus = data[data['Kaon assumed particle type'] > 0].shape[0]
+    total_B_minus = data[data['Kaon assumed particle type'] < 0].shape[0]
 
     return total_B, total_B_plus, total_B_minus
 
 
-def compute_asymmetry():
-    data = __load_signal_data()
+def compute_asymmetry(data):
     total_B, total_B_plus, total_B_minus = count_B_mesons(data)
     print(f"Total number of B mesons: {total_B}")
     print(f"Total number of B+ mesons: {total_B_plus}")
@@ -68,5 +57,4 @@ def compute_asymmetry():
 
 
 if __name__ == "__main__":
-    data = __load_simulation_data()
-    print('\n'.join(data.keys()))
+    pass

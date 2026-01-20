@@ -5,7 +5,7 @@ reconstructed, peaking and misidentified backgrounds (by sideband subtraction).
 
 15/01 - created
 """
-
+import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,8 +19,11 @@ sns.set_context('paper')
 with open('data/filtered_data.pkl', 'rb') as f:
     seperation = pickle.load(f)
 
+dataset_name = None
+
 
 def predict_all():
+    global dataset_name
     """
     Run predictions for all k folded models in 'models/' directory, using the seperation object stored in 'data/filtered_data.pkl'.
     Returns a DataFrame of the entire dataset combined with the predicted signal probabilities in column 'signal_probability'.
@@ -36,7 +39,11 @@ def predict_all():
     """
     dataset = []
     for file in glob.glob('models/xgboost_model_*.pkl'):
-        k = int(file.split('_')[-1].split('.')[0])
+        filename = os.path.basename(file)
+        name_no_ext = os.path.splitext(filename)[0]
+        parts = name_no_ext.split('_')
+        k = int(parts[-2])
+        dataset_name = int(parts[-1])
 
         data_k = seperation.dataset_k(
             k+1, drop_cols=['B invariant mass', 'dimuon-system invariant mass'])
@@ -137,8 +144,8 @@ def separate_data(feature='B invariant mass'):
     plt.show()
 
     # Save final classified data
-    final_data.to_csv('data/final_classified_data.csv', index=False)
-    print('Final classified data saved to data/final_classified_data.csv')
+    # final_data.to_csv('data/final_classified_data.csv', index=False)
+    # print('Final classified data saved to data/final_classified_data.csv')
     return final_data
 
 
@@ -172,30 +179,37 @@ def analyze_k_mu_system(data):
     plt.legend()
     plt.show()
 
+
 def background_fit_cleaning(data):
     data = data[data['signal'] == 1].copy()
     data = data[data['B invariant mass'] >= 5200].reset_index(drop=True)
 
-    bg_mask = (data['B invariant mass'] > 5400) & (data['B invariant mass'] < 6500)
+    bg_mask = (data['B invariant mass'] > 5400) & (
+        data['B invariant mass'] < 6500)
     background_data = data[bg_mask]
 
-    hist_bg, bin_edges_bg = np.histogram(background_data['B invariant mass'], bins=50)
+    hist_bg, bin_edges_bg = np.histogram(
+        background_data['B invariant mass'], bins=50)
     bin_centers_bg = (bin_edges_bg[:-1] + bin_edges_bg[1:]) / 2
 
     x_offset = 5400
+
     def exp_func(x, a, b, c):
         return a * np.exp(b * x) + c
 
-    popt, _ = curve_fit(exp_func, bin_centers_bg - x_offset, hist_bg, p0=[hist_bg[0], -0.005, 0.5])
+    popt, _ = curve_fit(exp_func, bin_centers_bg - x_offset,
+                        hist_bg, p0=[hist_bg[0], -0.005, 0.5])
 
     ref_bins = 100
     ref_range = (5200, 6500)
-    counts, bin_edges = np.histogram(data['B invariant mass'], bins=ref_bins, range=ref_range)
+    counts, bin_edges = np.histogram(
+        data['B invariant mass'], bins=ref_bins, range=ref_range)
     bin_width = bin_edges[1] - bin_edges[0]
     scale_factor = bin_width / (bin_edges_bg[1] - bin_edges_bg[0])
 
     def get_bg_weight(mass):
-        bg_level = exp_func(mass - x_offset, popt[0]*scale_factor, popt[1], popt[2]*scale_factor)
+        bg_level = exp_func(
+            mass - x_offset, popt[0]*scale_factor, popt[1], popt[2]*scale_factor)
         bin_idx = np.digitize(mass, bin_edges) - 1
         bin_idx = np.clip(bin_idx, 0, ref_bins - 1)
         total_in_bin = counts[bin_idx]
@@ -209,11 +223,12 @@ def background_fit_cleaning(data):
 
     _, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
 
-    ax1.hist(data['B invariant mass'], bins=ref_bins, range=ref_range, alpha=0.5, label='Raw Data')
+    ax1.hist(data['B invariant mass'], bins=ref_bins,
+             range=ref_range, alpha=0.5, label='Raw Data')
     x_plot = np.linspace(5200, 6500, 500)
     ax1.plot(x_plot, exp_func(x_plot - x_offset, popt[0]*scale_factor,
                               popt[1], popt[2]*scale_factor),
-                              color='red', label='Background Model')
+             color='red', label='Background Model')
     ax1.set_yscale('log')
     ax1.legend()
 
@@ -227,6 +242,7 @@ def background_fit_cleaning(data):
 
     return data
 
+
 def plot_resulting_dimuon_masses(data):
     plt.figure(figsize=(10, 6))
     sns.histplot(data=data, x='dimuon-system invariant mass',
@@ -236,9 +252,11 @@ def plot_resulting_dimuon_masses(data):
     plt.title('Dimuon System Invariant Mass Spectrum After Background Cleaning')
     plt.show()
 
+
 def compute_dimuon_cpasy(data):
     # Ensure we have the weights from the previous background fit
-    jpsi_mask = data['dimuon-system invariant mass'].between(3000, 3150) # Standard J/psi window
+    # Standard J/psi window
+    jpsi_mask = data['dimuon-system invariant mass'].between(3000, 3150)
     pos_events = data[jpsi_mask & (data['B assumed particle type'] > 0)]
     neg_events = data[jpsi_mask & (data['B assumed particle type'] < 0)]
 
@@ -246,7 +264,8 @@ def compute_dimuon_cpasy(data):
     yield_neg_jpsi = neg_events['event_weight'].sum()
 
     # We do the same for the psi(2S) window, separate to the J/psi
-    psi2s_mask = data['dimuon-system invariant mass'].between(3600, 3750) # Standard psi(2S) window
+    # Standard psi(2S) window
+    psi2s_mask = data['dimuon-system invariant mass'].between(3600, 3750)
     pos_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] > 0)]
     neg_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] < 0)]
     yield_pos_psi2s = pos_events_psi2s['event_weight'].sum()
@@ -254,12 +273,14 @@ def compute_dimuon_cpasy(data):
 
     if (yield_pos_jpsi + yield_neg_jpsi) == 0:
         return 0
-    
+
     if (yield_pos_psi2s + yield_neg_psi2s) == 0:
         return 0
 
-    cp_asymmetry_Jpsi = (yield_pos_jpsi - yield_neg_jpsi) / (yield_pos_jpsi + yield_neg_jpsi)
-    cp_asymmetry_psi2s = (yield_pos_psi2s - yield_neg_psi2s) / (yield_pos_psi2s + yield_neg_psi2s)
+    cp_asymmetry_Jpsi = (yield_pos_jpsi - yield_neg_jpsi) / \
+        (yield_pos_jpsi + yield_neg_jpsi)
+    cp_asymmetry_psi2s = (yield_pos_psi2s - yield_neg_psi2s) / \
+        (yield_pos_psi2s + yield_neg_psi2s)
 
     print(f'Signal Yield (B+ J/psi): {yield_pos_jpsi:.2f}')
     print(f'Signal Yield (B- J/psi): {yield_neg_jpsi:.2f}')
@@ -270,7 +291,19 @@ def compute_dimuon_cpasy(data):
 
     return cp_asymmetry_Jpsi, cp_asymmetry_psi2s
 
+
+def save_cleaned_data(dataset_name):
+    """
+    Saves the cleaned data to a Pickle file.
+    """
+    cleaned_data = main()
+    filename = f'data/cleaned_data_{dataset_name}.pkl'
+    cleaned_data.to_pickle(filename)
+    print(f'Cleaned data saved to {filename}')
+
+
 if __name__ == "__main__":
+    save_cleaned_data(dataset_name)
     final_data = separate_data()
     peak = background_fit_cleaning(final_data)
     plot_resulting_dimuon_masses(peak)

@@ -17,7 +17,8 @@ models = []
 k = 10
 
 # %% Load Data
-seperation = filtered_data.seperate(k=k)
+dataset = '2012'
+seperation = filtered_data.seperate(k=k, dataset=dataset)
 
 sig, bkg = seperation.data(drop_cols=['B invariant mass',
                                       'dimuon-system invariant mass'])
@@ -100,5 +101,5 @@ for i in range(k):
 
 # %% Save Models
 for i, model in enumerate(models):
-    with open(f'models/xgboost_model_{i}.pkl', 'wb') as f:
+    with open(f'models/xgboost_model_{i}_{dataset}.pkl', 'wb') as f:
         pickle.dump(model, f)
