@@ -124,6 +124,7 @@ def separate_data(feature='B invariant mass'):
         all_data['signal_probability'], signal_range=(0.6, 1.0))
     print(f'Optimal Cutoff Probability: {optimal_cutoff}')
     final_data = determine_signal(all_data, optimal_cutoff)
+
     # We histogram the final classified data
     plt.hist(final_data[final_data['signal'] == 1][feature],
              bins=100, alpha=0.5, label='Classified Signal')
@@ -134,6 +135,7 @@ def separate_data(feature='B invariant mass'):
     plt.yscale('log')
     plt.legend()
     plt.show()
+
     # Save final classified data
     final_data.to_csv('data/final_classified_data.csv', index=False)
     print('Final classified data saved to data/final_classified_data.csv')
@@ -170,13 +172,16 @@ def analyze_k_mu_system(data):
     plt.legend()
     plt.show()
 
+
 def background_fit_cleaning(data):
     data = data[data['signal'] == 1].reset_index(drop=True)
     data = data[data['B invariant mass'] >= 5200].reset_index(drop=True)
-    bg_mask = (data['B invariant mass'] > 5400) & (data['B invariant mass'] < 6500)
+    bg_mask = (data['B invariant mass'] > 5400) & (
+        data['B invariant mass'] < 6500)
     background_data = data[bg_mask]
 
-    hist_bg, bin_edges_bg = np.histogram(background_data['B invariant mass'], bins=50)
+    hist_bg, bin_edges_bg = np.histogram(
+        background_data['B invariant mass'], bins=50)
     bin_centers_bg = (bin_edges_bg[:-1] + bin_edges_bg[1:]) / 2
 
     x_offset = 5400
@@ -188,7 +193,8 @@ def background_fit_cleaning(data):
     p0 = [hist_bg[0], -0.005, 0.5]
     popt, _ = curve_fit(exp_func, x_fit_shifted, hist_bg, p0=p0)
 
-    full_hist, full_bin_edges = np.histogram(data['B invariant mass'], bins=100, range=(5200, 6500))
+    full_hist, full_bin_edges = np.histogram(
+        data['B invariant mass'], bins=100, range=(5200, 6500))
     full_bin_centers = (full_bin_edges[:-1] + full_bin_edges[1:]) / 2
 
     background_component = exp_func(full_bin_centers - x_offset, *popt)
@@ -202,13 +208,14 @@ def background_fit_cleaning(data):
              label='Original Data')
     x_plot = np.linspace(5200, 6500, 500)
     y_plot = exp_func(x_plot - x_offset, *popt)
-    ax1.plot(x_plot, y_plot, color='red', lw=2, label='Background Fit (Extrapolated)')
+    ax1.plot(x_plot, y_plot, color='red', lw=2,
+             label='Background Fit (Extrapolated)')
     ax1.set_yscale('log')
     ax1.set_title("Background Fit & Extrapolation")
     ax1.legend()
 
     # Plot 2: Cleaned Signal
-    ax2.bar(full_bin_centers, peak_data, width=(full_bin_edges[1]-full_bin_edges[0]), 
+    ax2.bar(full_bin_centers, peak_data, width=(full_bin_edges[1]-full_bin_edges[0]),
             alpha=0.7, color='tab:blue', label='Background Cleaned Data')
     ax2.set_title("Cleaned Signal Peak (Background Removed)")
     ax2.set_xlabel(r'B candidate mass / MeV/$c^2$')
@@ -220,8 +227,13 @@ def background_fit_cleaning(data):
 
     return peak_data
 
-if __name__ == "__main__":
-    all_data = predict_all()
+
+def main():
     final_data = separate_data()
     analyze_k_mu_system(final_data)
     background_fit_cleaning(final_data)
+    return final_data
+
+
+if __name__ == "__main__":
+    pass
