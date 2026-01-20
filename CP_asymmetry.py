@@ -3,7 +3,7 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 20/01 - created
 """
 
-from copyreg import pickle
+import pickle
 import predictions_data
 
 
@@ -12,10 +12,31 @@ def __load_signal_data():
     return signal
 
 
-def __load_JpsiK_data():
+def __load_simulation_data():
+    """
+    Load the simulation datasets for J/psi K and K mu mu.
+    Returns:
+    JpsiK_data : pd.DataFrame
+        The dataset for the J/psi K simulation.
+    Kmumu_data : pd.DataFrame
+        The dataset for the K mu mu simulation."""
     with open('datasets/rapidsim_JpsiK.pkl', 'rb') as infile:
         JpsiK_data = pickle.load(infile)
-        return JpsiK_data
+
+    with open('datasets/rapidsim_Kmumu.pkl', 'rb') as infile:
+        Kmumu_data = pickle.load(infile)
+
+    return JpsiK_data, Kmumu_data
+
+
+def __load_magnet_data():
+    with open('datasets/dataset_2012_MagnetUp.pkl', 'rb') as infile:
+        magnet_up_data = pickle.load(infile)
+
+    with open('datasets/dataset_2012_MagnetDown.pkl', 'rb') as infile:
+        magnet_down_data = pickle.load(infile)
+
+    return magnet_up_data, magnet_down_data
 
 
 def count_B_mesons(data):
@@ -47,5 +68,5 @@ def compute_asymmetry():
 
 
 if __name__ == "__main__":
-    data = __load_JpsiK_data()
+    data = __load_simulation_data()
     print('\n'.join(data.keys()))
