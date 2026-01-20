@@ -1,6 +1,9 @@
 """
-Runs predictions for k folded BDT models on data and visualises the results.
-Louis Liu 15/01
+Runs predictions for k folded BDT models on data and visualises the results. 
+Also finds the optimal cutoff probability to classify signal and background events, and filters partially 
+reconstructed, peaking and misidentified backgrounds (by sideband subtraction). 
+
+15/01 - created
 """
 
 import numpy as np
@@ -35,7 +38,7 @@ def predict_all():
         k = int(file.split('_')[-1].split('.')[0])
 
         data_k = seperation.dataset_k(
-            k+1, drop_cols=['index', 'B invariant mass', 'dimuon-system invariant mass'])
+            k+1, drop_cols=['B invariant mass', 'dimuon-system invariant mass'])
 
         with open(file, 'rb') as f:
             model = pickle.load(f)

@@ -1,6 +1,6 @@
 """
 Using XGBoost to classify signal and background events.
-Louis Liu 12/01
+12/01
 """
 import filtered_data
 from sklearn.metrics import roc_curve
@@ -14,7 +14,7 @@ sns.set_context('paper')
 
 detail = True
 models = []
-k = 5
+k = 10
 
 # %% Load Data
 seperation = filtered_data.seperate(k=k)

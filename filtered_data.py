@@ -17,6 +17,8 @@ sns.set_palette("colorblind")
 with open('datasets/dataset_2011.pkl', 'rb') as infile:
     _data_2011 = pickle.load(infile)
 
+print(_data_2011['B assumed particle type'])
+
 
 def raw_data():
     """
