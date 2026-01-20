@@ -172,62 +172,7 @@ def analyze_k_mu_system(data):
     plt.legend()
     plt.show()
 
-
 def background_fit_cleaning(data):
-    data = data[data['signal'] == 1].reset_index(drop=True)
-    data = data[data['B invariant mass'] >= 5200].reset_index(drop=True)
-    bg_mask = (data['B invariant mass'] > 5400) & (
-        data['B invariant mass'] < 6500)
-    background_data = data[bg_mask]
-
-    hist_bg, bin_edges_bg = np.histogram(
-        background_data['B invariant mass'], bins=50)
-    bin_centers_bg = (bin_edges_bg[:-1] + bin_edges_bg[1:]) / 2
-
-    x_offset = 5400
-    x_fit_shifted = bin_centers_bg - x_offset
-
-    def exp_func(x, a, b, c):
-        return a * np.exp(b * x) + c
-
-    p0 = [hist_bg[0], -0.005, 0.5]
-    popt, _ = curve_fit(exp_func, x_fit_shifted, hist_bg, p0=p0)
-
-    full_hist, full_bin_edges = np.histogram(
-        data['B invariant mass'], bins=100, range=(5200, 6500))
-    full_bin_centers = (full_bin_edges[:-1] + full_bin_edges[1:]) / 2
-
-    background_component = exp_func(full_bin_centers - x_offset, *popt)
-    peak_data = full_hist - background_component
-    peak_data = np.where(peak_data < 0, 0, peak_data)
-
-    _, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
-
-    # Plot 1: Overlay Fit on Original Data
-    ax1.hist(data['B invariant mass'], bins=100, range=(5200, 6500), alpha=0.5,
-             label='Original Data')
-    x_plot = np.linspace(5200, 6500, 500)
-    y_plot = exp_func(x_plot - x_offset, *popt)
-    ax1.plot(x_plot, y_plot, color='red', lw=2,
-             label='Background Fit (Extrapolated)')
-    ax1.set_yscale('log')
-    ax1.set_title("Background Fit & Extrapolation")
-    ax1.legend()
-
-    # Plot 2: Cleaned Signal
-    ax2.bar(full_bin_centers, peak_data, width=(full_bin_edges[1]-full_bin_edges[0]),
-            alpha=0.7, color='tab:blue', label='Background Cleaned Data')
-    ax2.set_title("Cleaned Signal Peak (Background Removed)")
-    ax2.set_xlabel(r'B candidate mass / MeV/$c^2$')
-    ax2.set_ylabel('Candidates')
-    ax2.legend()
-
-    plt.tight_layout()
-    plt.show()
-
-    return peak_data
-
-def background_fit_cleaning_weighted(data):
     data = data[data['signal'] == 1].copy()
     data = data[data['B invariant mass'] >= 5200].reset_index(drop=True)
 
@@ -283,7 +228,5 @@ def background_fit_cleaning_weighted(data):
     return data
 
 if __name__ == "__main__":
-    all_data = predict_all()
     final_data = separate_data()
-    analyze_k_mu_system(final_data)
-    background_fit_cleaning_weighted(final_data)
+    background_fit_cleaning(final_data)
