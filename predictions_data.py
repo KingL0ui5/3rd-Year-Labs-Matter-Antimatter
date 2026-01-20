@@ -252,16 +252,11 @@ def plot_resulting_dimuon_masses(data):
     plt.title('Dimuon System Invariant Mass Spectrum After Background Cleaning')
     plt.show()
 
+
 def main():
     data = separate_data()
     cleaned_data = background_fit_cleaning(data)
     return cleaned_data
-
-
-def main():
-    final_data = separate_data()
-    cleaned = background_fit_cleaning(final_data)
-    return cleaned
 
 
 def save_cleaned_data(dataset_name):
