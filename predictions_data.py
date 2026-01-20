@@ -258,6 +258,12 @@ def main():
     return cleaned_data
 
 
+def main():
+    final_data = separate_data()
+    cleaned = background_fit_cleaning(final_data)
+    return cleaned
+
+
 def save_cleaned_data(dataset_name):
     """
     Saves the cleaned data to a Pickle file.
