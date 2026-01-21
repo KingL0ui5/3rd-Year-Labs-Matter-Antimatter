@@ -2,6 +2,8 @@
 Using XGBoost to classify signal and background events.
 12/01
 """
+import os
+import config
 import filtered_data
 from sklearn.metrics import roc_curve
 import pandas as pd
@@ -14,14 +16,13 @@ sns.set_context('paper')
 
 detail = True
 models = []
-k = 10
+k = config.k
+dataset = config.dataset
 
 # %% Load Data
-dataset = '2012'
 seperation = filtered_data.seperate(k=k, dataset=dataset)
 
-sig, bkg = seperation.data(drop_cols=['B invariant mass',
-                                      'dimuon-system invariant mass'])
+sig, bkg = seperation.data(drop_cols=config.drop_cols)
 
 #  save the filtered object
 with open('data/filtered_data.pkl', 'wb') as f:
@@ -100,6 +101,8 @@ for i in range(k):
     models.append(model_k)
 
 # %% Save Models
+os.makedirs(f'models_{dataset}', exist_ok=True)
+
 for i, model in enumerate(models):
-    with open(f'models/xgboost_model_{i}_{dataset}.pkl', 'wb') as f:
+    with open(f'models_{dataset}/xgboost_model_{i}.pkl', 'wb') as f:
         pickle.dump(model, f)

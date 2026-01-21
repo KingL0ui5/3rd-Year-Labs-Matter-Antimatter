@@ -29,7 +29,14 @@ def load_magnet_data():
     with open('datasets/dataset_2012_MagnetDown.pkl', 'rb') as infile:
         magnet_down_data = pickle.load(infile)
 
-    return magnet_up_data, magnet_down_data
+    #  concatinate both datasets with polarity column for easier processing
+
+    magnet_up_data['polarity'] = 1
+    magnet_down_data['polarity'] = 0
+
+    dataset = pd.concat([magnet_up_data, magnet_down_data], ignore_index=True)
+
+    return dataset
 
 
 def load_2011_data():
@@ -67,11 +74,8 @@ class seperate:
             dataset = load_2011_data()
 
         elif dataset == '2012':
-            dataset_up, dataset_down = load_magnet_data()
-            dataset_up['polarity'] = 1
-            dataset_down['polarity'] = 0
+            dataset = load_magnet_data()
 
-            dataset = pd.concat([dataset_up, dataset_down], ignore_index=True)
         else:
             raise ValueError(
                 "dataset must be either '2011' or '2012'")
