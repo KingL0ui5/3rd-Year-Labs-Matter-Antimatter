@@ -25,7 +25,6 @@ dataset_name = None
 
 
 def predict_all():
-    global dataset_name
     """
     Run predictions for all k folded models in 'models/' directory, using the seperation object stored in 'data/filtered_data.pkl'.
     Returns a DataFrame of the entire dataset combined with the predicted signal probabilities in column 'signal_probability'.
@@ -39,6 +38,7 @@ def predict_all():
     pd.DataFrame
         DataFrame containing the entire dataset with an additional column 'signal_probability' for predicted signal probabilities
     """
+    global dataset_name
     dataset = []
     for file in glob.glob('models/xgboost_model_*.pkl'):
         filename = os.path.basename(file)
