@@ -43,7 +43,7 @@ def predict_all():
         name_no_ext = os.path.splitext(filename)[0]
         parts = name_no_ext.split('_')
         k = int(parts[-2])
-        dataset_name = int(parts[-1])
+        dataset_name = parts[-1]
 
         data_k = seperation.dataset_k(
             k+1, drop_cols=['B invariant mass', 'dimuon-system invariant mass'])
@@ -259,7 +259,7 @@ def main():
     return cleaned_data
 
 
-def save_cleaned_data(dataset_name):
+def save_cleaned_data():
     """
     Saves the cleaned data to a Pickle file.
     """
@@ -274,3 +274,4 @@ if __name__ == "__main__":
     cleaned_data = background_fit_cleaning(data)
     analyze_k_mu_system(cleaned_data)
     plot_resulting_dimuon_masses(cleaned_data)
+    save_cleaned_data()
