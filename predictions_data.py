@@ -17,6 +17,7 @@ from scipy.optimize import curve_fit
 sns.set_style('darkgrid')
 sns.set_context('paper')
 
+
 # %% prediction class
 
 

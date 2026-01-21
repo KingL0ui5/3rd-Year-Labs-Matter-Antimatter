@@ -5,6 +5,8 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 
 import pickle
 
+# %% Data Loading Functions
+
 
 def __load_signal_data():
     """
@@ -49,7 +51,7 @@ def __load_simulation_data():
 
     return JpsiK_data, Kmumu_data
 
-# %%
+# %% CP Asymmetry Calculations
 
 
 def count_B_mesons(data):
@@ -116,6 +118,8 @@ def compute_dimuon_asymmetry(data):
     print(f'CP Asymmetry (psi(2S)): {cp_asymmetry_psi2s:.4f}')
 
     return cp_asymmetry_Jpsi, cp_asymmetry_psi2s
+
+# %% Main Execution
 
 
 def CP_asymmetry_mag():
