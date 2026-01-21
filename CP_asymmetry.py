@@ -120,16 +120,16 @@ def compute_dimuon_asymmetry(data):
 
 def CP_asymmetry_mag():
     mag_data_up, mag_data_down = __load_cleaned_mag_data()
-    print("Magnetic DOWN Data CP Asymmetry:")
+    print("- - - - - - - - - - - - - - Magnetic DOWN Data CP Asymmetry: - - - - - - - - - - - - - - ")
     compute_b_asymmetry(mag_data_down)
     compute_dimuon_asymmetry(mag_data_down)
-    print("Magnetic UP Data CP Asymmetry:")
+    print("- - - - - - - - - - - - - -Magnetic UP Data CP Asymmetry: - - - - - - - - - - - - - -")
     compute_b_asymmetry(mag_data_up)
     compute_dimuon_asymmetry(mag_data_up)
 
 
 def CP_asymmetry_signal():
-    print("Signal Data CP Asymmetry:")
+    print("- - - - - - - - - - - - - - Signal Data CP Asymmetry: - - - - - - - - - - - - - - ")
     signal_data = __load_signal_data()
     compute_b_asymmetry(signal_data)
     compute_dimuon_asymmetry(signal_data)

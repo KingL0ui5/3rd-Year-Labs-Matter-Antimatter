@@ -21,8 +21,8 @@ sns.set_context('paper')
 
 
 class BDT_Analysis:
-    def __init__(self, dataset=config.dataset, k=config.k):
-
+    def __init__(self, dataset=config.dataset):
+        k = config.k
         with open('data/filtered_data.pkl', 'rb') as f:
             self._seperation = pickle.load(f)
 
