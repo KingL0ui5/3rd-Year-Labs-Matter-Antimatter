@@ -35,6 +35,18 @@ def __load_cleaned_mag_data():
     return mag_up, mag_down
 
 
+def __load_rare_decay_data():
+    """
+    Load the cleaned rare decay dataset after background fitting and weighting.
+    Returns:
+    pd.DataFrame
+        The cleaned dataset with event weights applied.
+    """
+    with open('data/rare_decay_data.pkl', 'rb') as f:
+        cleaned_data = pickle.load(f)
+    return cleaned_data
+
+
 def __load_simulation_data():
     """
     Load the simulation datasets for J/psi K and K mu mu.
@@ -139,6 +151,14 @@ def CP_asymmetry_signal():
     compute_dimuon_asymmetry(signal_data)
 
 
+def rare_decay_asymmetry():
+    print("- - - - - - - - - - - - - - Rare Decay Data CP Asymmetry: - - - - - - - - - - - - - - ")
+    rare_decay_data = __load_rare_decay_data()
+    compute_b_asymmetry(rare_decay_data)
+    compute_dimuon_asymmetry(rare_decay_data)
+
+
 if __name__ == "__main__":
     CP_asymmetry_mag()
     CP_asymmetry_signal()
+    rare_decay_asymmetry()
