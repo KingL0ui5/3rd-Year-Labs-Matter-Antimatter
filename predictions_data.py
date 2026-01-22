@@ -16,7 +16,6 @@ import glob
 from scipy.optimize import curve_fit
 sns.set_style('darkgrid')
 sns.set_context('paper')
-
 # %% prediction class
 
 
@@ -296,6 +295,7 @@ def plot_resulting_dimuon_masses(data):
     plt.legend()
     plt.show()
 
+
 def rare_decay_analysis(data):
     # We take out the peaks from the dimuon masses:
     signal_region_1 = (data['dimuon-system invariant mass'] < 3040) | (
@@ -306,12 +306,13 @@ def rare_decay_analysis(data):
 
     plt.figure(figsize=(10, 6))
     sns.histplot(data=rare_decay_data, x='dimuon-system invariant mass',
-                    bins=100, color='green')
+                 bins=100, color='green')
     plt.xlabel(r'Dimuon System Invariant Mass [MeV/$c^2$]')
     plt.ylabel('Candidates')
     plt.title('Dimuon System Invariant Mass Spectrum (Rare Decay Regions)')
     plt.show()
     return rare_decay_data
+
 
 if __name__ == "__main__":
     analyse = BDT_Analysis()
