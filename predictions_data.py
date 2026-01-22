@@ -21,7 +21,7 @@ sns.set_context('paper')
 
 
 class BDT_Analysis:
-    def __init__(self, dataset=config.dataset):
+    def __init__(self, dataset=config.dataset, plot: bool = False):
         k = config.k
         with open('data/filtered_data.pkl', 'rb') as f:
             self._seperation = pickle.load(f)
@@ -38,6 +38,9 @@ class BDT_Analysis:
 
         data = self.__classify_data(hist=True)
         self._cleaned_data = self.__background_fit_cleaning(data)
+
+        if plot:
+            self.__plot_resulting_dimuon_masses(self._cleaned_data)
 
     # - - - - - - - - - - - - - - - - - - run predictions and classify - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def __run_predictions(self):
@@ -96,67 +99,96 @@ class BDT_Analysis:
 
         return classified_data
 
+    @staticmethod
+    def __crystal_ball(x, x0, sigma, alpha, n, N):
+        """
+        x0: mean, sigma: width, alpha: transition point, n: tail parameter, N: normalization
+        """
+        A = (n / np.abs(alpha))**n * np.exp(-np.abs(alpha)**2 / 2)
+        B = n / np.abs(alpha) - np.abs(alpha)
+
+        t = (x - x0) / sigma
+
+        if alpha < 0:
+            t = -t
+
+        # Piecewise implementation
+        condition = t > -np.abs(alpha)
+        main_peak = N * np.exp(-t**2 / 2)
+        tail = N * A * (B - t)**(-n)
+
+        return np.where(condition, main_peak, tail)
+
+    @staticmethod
+    def __total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
+        # Signal + Background
+        return BDT_Analysis.__crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
+
     def __background_fit_cleaning(self, data):
         data = data[data['signal'] == 1].copy()
-        data = data[data['B invariant mass'] >= 5200].reset_index(drop=True)
+        data = data[(data['B invariant mass'] >= 5200) & (
+            data['B invariant mass'] <= 6500)].reset_index(drop=True)
 
-        bg_mask = (data['B invariant mass'] > 5400) & (
-            data['B invariant mass'] < 6500)
-        background_data = data[bg_mask]
+        data = data[(data['B invariant mass'] >= 5200) & (
+            data['B invariant mass'] <= 6500)].reset_index(drop=True)
+        hist, bin_edges = np.histogram(
+            data['B invariant mass'], bins=200, range=(5200, 6500))
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
-        hist_bg, bin_edges_bg = np.histogram(
-            background_data['B invariant mass'], bins=50)
-        bin_centers_bg = (bin_edges_bg[:-1] + bin_edges_bg[1:]) / 2
-
-        x_offset = 5400
-
-        def exp_func(x, a, b, c):
-            return a * np.exp(b * x) + c
-
-        popt, _ = curve_fit(exp_func, bin_centers_bg - x_offset,
-                            hist_bg, p0=[hist_bg[0], -0.005, 0.5])
-
-        ref_bins = 100
-        ref_range = (5200, 6500)
-        counts, bin_edges = np.histogram(
-            data['B invariant mass'], bins=ref_bins, range=ref_range)
-        bin_width = bin_edges[1] - bin_edges[0]
-        scale_factor = bin_width / (bin_edges_bg[1] - bin_edges_bg[0])
+        p0 = [5280, 20, 1.5, 2, np.max(hist), np.max(hist)/20, -0.0005, 1]
+        try:
+            popt, _ = curve_fit(BDT_Analysis.__total_fit_func, bin_centers, hist, p0=p0,
+                                bounds=([5250, 5, 0.1, 1, 0, 0, -0.01, 0],
+                                        [5350, 50, 5.0, 10, np.inf, np.inf, 0, np.inf]))
+        except RuntimeError:
+            print("Fit failed; check initial parameters.")
+            return data
 
         def get_bg_weight(mass):
-            bg_level = exp_func(
-                mass - x_offset, popt[0]*scale_factor, popt[1], popt[2]*scale_factor)
-            bin_idx = np.digitize(mass, bin_edges) - 1
-            bin_idx = np.clip(bin_idx, 0, ref_bins - 1)
-            total_in_bin = counts[bin_idx]
+            sig = BDT_Analysis.__crystal_ball(mass, *popt[0:5])
+            bg = popt[5] * np.exp(popt[6] * (mass - 5400)) + popt[7]
 
-            if total_in_bin <= 0:
+            total = sig + bg
+            if total <= 0:
                 return 0
-            weight = (total_in_bin - bg_level) / total_in_bin
-            return max(0, weight)
+
+            weight = sig / total
+            return np.clip(weight, 0, 1)
 
         data['event_weight'] = data['B invariant mass'].apply(get_bg_weight)
 
-        _, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 12))
+        x_plot = np.linspace(5200, 6500, 2000)
 
-        ax1.hist(data['B invariant mass'], bins=ref_bins,
-                 range=ref_range, alpha=0.5, label='Raw Data')
-        x_plot = np.linspace(5200, 6500, 500)
-        ax1.plot(x_plot, exp_func(x_plot - x_offset, popt[0]*scale_factor,
-                                  popt[1], popt[2]*scale_factor),
-                 color='red', label='Background Model')
-        ax1.set_yscale('log')
+        ax1.hist(data['B invariant mass'], bins=100,
+                 alpha=0.3, label='Data', color='gray')
+        ax1.plot(x_plot, BDT_Analysis.__total_fit_func(x_plot, *popt),
+                 'r-', label='Total Fit (CB + Exp)')
+        ax1.plot(x_plot, popt[5] * np.exp(popt[6] * (x_plot - 5400)) + popt[7],
+                 'b--', label='Background Component')
+        ax1.set_title("Crystal Ball + Exponential Decay Fit")
         ax1.legend()
+        ax1.set_yscale('log')
 
-        ax2.hist(data['B invariant mass'], bins=ref_bins, range=ref_range,
-                 weights=data['event_weight'], alpha=0.7, color='tab:green',
-                 label='Weighted (Cleaned) Data')
-        ax2.set_title("Full Event Data (Weighted)")
+        ax2.hist(data['B invariant mass'], bins=100, weights=data['event_weight'],
+                 alpha=0.7, color='tab:green', label='Signal-Weighted Data')
+        ax2.set_title("Cleaned Data (Background Subtracted via Weights)")
         ax2.set_xlabel(r'B candidate mass / MeV/$c^2$')
+
         plt.tight_layout()
         plt.show()
 
         return data
+
+    @staticmethod
+    def __plot_resulting_dimuon_masses(data):
+        plt.figure(figsize=(10, 6))
+        sns.histplot(data=data, x='dimuon-system invariant mass',
+                     bins=100, color='purple')
+        plt.xlabel(r'Dimuon System Invariant Mass [MeV/$c^2$]')
+        plt.ylabel('Candidates')
+        plt.title('Dimuon System Invariant Mass Spectrum After Background Cleaning')
+        plt.show()
 
     #  - - - - - - - - - - - - - - - - - - - - - - - - - signal cutoff methods - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @staticmethod
