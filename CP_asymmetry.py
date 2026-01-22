@@ -3,7 +3,6 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 20/01 - created
 """
 
-import numpy as np
 import pickle
 import math
 
@@ -148,9 +147,9 @@ def compute_rare_asymmetry(data):
 # %% Main Execution
 
 if __name__ == "__main__":
-    mag_up, mag_down = __load_cleaned_mag_data()
-    cpa_rare, uncertainty_rare = compute_rare_asymmetry(mag_down)
-    cpa_peaks, uncertianty_peaks = compute_peaks_asymmetry(mag_down)
+    signal_data = __load_signal_data()
+    cpa_rare, uncertainty_rare = compute_rare_asymmetry(signal_data)
+    cpa_peaks, uncertianty_peaks = compute_peaks_asymmetry(signal_data)
 
     print(f"CP Asymmetry in Rare Decay Regions: {cpa_rare} ± {uncertainty_rare}")
     print(f"CP Asymmetry in Resonant Peaks: {cpa_peaks} ± {uncertianty_peaks}")
