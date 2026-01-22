@@ -66,7 +66,6 @@ def __load_simulation_data():
 
 # %% CP Asymmetry Calculations
 
-
 def count_B_mesons(data):
     """
     Count the total number of B mesons in the dataset, and seperate them into B+ and B- mesons.
@@ -79,28 +78,48 @@ def count_B_mesons(data):
         Total number of B- mesons in the dataset
     """
     total_B = data.shape[0]
-    total_B_plus = data[data['Kaon assumed particle type'] > 0].shape[0]
-    total_B_minus = data[data['Kaon assumed particle type'] < 0].shape[0]
-
+    total_B_plus = data[data['Kaon assumed particle type'] > 0]['event_weight'].sum()
+    total_B_minus = data[data['Kaon assumed particle type'] < 0]['event_weight'].sum()
     return total_B, total_B_plus, total_B_minus
 
-
 def compute_b_asymmetry(data):
-    """
-    Computes the CP asymmetry for the B mesons in the dataset given.
-    parameters:
-    data : pd.DataFrame
-        The dataset to evaluate.
-    returns:
-    cp_asy : float
-        The CP asymmetry value for the B mesons in the dataset.
-    """
-    # count the B mesons
-    total_B, total_B_plus, total_B_minus = count_B_mesons(data)
-    #  compute asymmetry
-    cp_asy = (total_B_plus - total_B_minus) / (total_B)
+    # count the B mesons using weights
+    _, total_B_plus, total_B_minus = count_B_mesons(data)
+    weighted_total = total_B_plus + total_B_minus
+    if weighted_total == 0:
+        return 0
+    cp_asy = (total_B_plus - total_B_minus) / weighted_total
     return cp_asy
 
+def compute_weighted_asymmetry_uncertainty(data):
+    """
+    Compute statistical uncertainty on CP asymmetry using weighted events.
+    
+    Formula: sigma_A = (2 * sqrt(N_minus^2 * var_plus + N_plus^2 * var_minus)) / (N_total^2)
+    where var = sum(weights^2).
+    """
+    # Separate the weights for B+ and B-
+    weights_plus = data[data['Kaon assumed particle type'] > 0]['event_weight']
+    weights_minus = data[data['Kaon assumed particle type'] < 0]['event_weight']
+
+    # Sum of weights (The 'Yield')
+    N_plus = weights_plus.sum()
+    N_minus = weights_minus.sum()
+    N_total = N_plus + N_minus
+
+    if N_total <= 0:
+        return 0.0
+
+    # Sum of weights squared (The 'Variance')
+    var_plus = (weights_plus**2).sum()
+    var_minus = (weights_minus**2).sum()
+
+    # Propagation of error formula
+    numerator = 2 * math.sqrt((N_minus**2 * var_plus) + (N_plus**2 * var_minus))
+    denominator = N_total**2
+    
+    uncertainty = numerator / denominator
+    return uncertainty
 
 def compute_asymmetry_uncertainty(data):
     """
@@ -130,7 +149,7 @@ def compute_peaks_asymmetry(data):
     ]
 
     cpa = compute_b_asymmetry(peaks_data)
-    cpa_uncert = compute_asymmetry_uncertainty(peaks_data)
+    cpa_uncert = compute_weighted_asymmetry_uncertainty(peaks_data)
 
     return cpa, cpa_uncert
 
@@ -145,18 +164,42 @@ def compute_rare_asymmetry(data):
     ]
 
     cpa = compute_b_asymmetry(rare_data)
-    cpa_uncert = compute_asymmetry_uncertainty(rare_data)
+    cpa_uncert = compute_weighted_asymmetry_uncertainty(rare_data)
 
     return cpa, cpa_uncert
 
-# %% Main Execution
+def compute_penguin_cp_symmetry(cpa_rare, cpa_peaks, cpa_rare_unc, cpa_peaks_unc):
+    """
+    Calculates the final physical CP asymmetry by subtracting the 
+    instrumental bias (measured in resonant peaks) from the raw rare asymmetry.
+    
+    Parameters:
+    cpa_rare (float): Raw CP asymmetry in the rare decay region.
+    cpa_peaks (float): Raw CP asymmetry in the resonant control region.
+    cpa_rare_unc (float): Uncertainty of the rare region asymmetry.
+    cpa_peaks_unc (float): Uncertainty of the resonant region asymmetry.
+    
+    Returns:
+    tuple: (final_cp_asymmetry, final_uncertainty)
+    """
+    final_cp_asymmetry = cpa_rare - cpa_peaks
+    final_uncertainty = math.sqrt(cpa_rare_unc**2 + cpa_peaks_unc**2)
 
+    return final_cp_asymmetry, final_uncertainty
+
+# %% Main Execution
 
 if __name__ == "__main__":
     signal_data = __load_signal_data()
-    cpa_rare, uncertainty_rare = compute_rare_asymmetry(signal_data)
-    cpa_peaks, uncertianty_peaks = compute_peaks_asymmetry(signal_data)
+    cpa_rare_val, uncertainty_rare_val = compute_rare_asymmetry(signal_data)
+    cpa_peaks_val, uncertianty_peaks_val = compute_peaks_asymmetry(signal_data)
+    final_cp_asy_val, final_cp_asy_unc_val = compute_penguin_cp_symmetry(cpa_rare_val, cpa_peaks_val,
+                                                        uncertainty_rare_val, uncertianty_peaks_val)
 
+    print('================================================')
     print(
-        f"CP Asymmetry in Rare Decay Regions: {cpa_rare} ± {uncertainty_rare}")
-    print(f"CP Asymmetry in Resonant Peaks: {cpa_peaks} ± {uncertianty_peaks}")
+        f"CP Asymmetry in Rare Decay Regions: {cpa_rare_val} ± {uncertainty_rare_val}")
+    print(f"CP Asymmetry in Resonant Peaks: {cpa_peaks_val} ± {uncertianty_peaks_val}")
+
+    print('================================================')
+    print(f'The rare case CP-violation value is: {final_cp_asy_val} $\pm$ {final_cp_asy_unc_val}.')
