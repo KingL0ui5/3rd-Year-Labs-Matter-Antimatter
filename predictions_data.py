@@ -28,7 +28,8 @@ def __load_sim_data():
     with open('datasets/rapidsim_Kmumu.pkl', 'rb') as infile:
         data = pickle.load(infile)
 
-    data.hist(column='B invariant mass', bins=100)
+    data.hist(column='B invariant mass', bins=500)
+    plt.xlim(5100, 5500)
     return data
 
 # %% prediction class
