@@ -285,11 +285,33 @@ def plot_resulting_dimuon_masses(data):
     plt.figure(figsize=(10, 6))
     sns.histplot(data=data, x='dimuon-system invariant mass',
                  bins=100, color='purple')
+    plt.axvline(3040, color='red', linestyle='--')
+    plt.axvline(3200, color='red', linestyle='--', label='J/Psi')
+    plt.axvline(3600, color='orange', linestyle='--')
+    plt.axvline(3780, color='orange', linestyle='--', label='Psi(2S)')
     plt.xlabel(r'Dimuon System Invariant Mass [MeV/$c^2$]')
     plt.ylabel('Candidates')
+    plt.yscale('log')
     plt.title('Dimuon System Invariant Mass Spectrum After Background Cleaning')
+    plt.legend()
     plt.show()
 
+def rare_decay_analysis(data):
+    # We take out the peaks from the dimuon masses:
+    signal_region_1 = (data['dimuon-system invariant mass'] < 3040) | (
+        data['dimuon-system invariant mass'] > 3200)
+    signal_region_2 = (data['dimuon-system invariant mass'] < 3600) | (
+        data['dimuon-system invariant mass'] > 3780)
+    rare_decay_data = data[signal_region_1 & signal_region_2]
+
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=rare_decay_data, x='dimuon-system invariant mass',
+                    bins=100, color='green')
+    plt.xlabel(r'Dimuon System Invariant Mass [MeV/$c^2$]')
+    plt.ylabel('Candidates')
+    plt.title('Dimuon System Invariant Mass Spectrum (Rare Decay Regions)')
+    plt.show()
+    return rare_decay_data
 
 if __name__ == "__main__":
     analyse = BDT_Analysis()
@@ -298,3 +320,5 @@ if __name__ == "__main__":
 
     analyze_k_mu_system(cleaned_data)
     plot_resulting_dimuon_masses(cleaned_data)
+    rare_decay_data = rare_decay_analysis(cleaned_data)
+    rare_decay_data.to_pickle('data/rare_decay_data.pkl')
