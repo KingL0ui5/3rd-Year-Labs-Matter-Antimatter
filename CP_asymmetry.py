@@ -66,6 +66,7 @@ def __load_simulation_data():
 
 # %% CP Asymmetry Calculations
 
+
 def count_B_mesons(data):
     """
     Count the total number of B mesons in the dataset, and seperate them into B+ and B- mesons.
@@ -83,6 +84,7 @@ def count_B_mesons(data):
 
     return total_B, total_B_plus, total_B_minus
 
+
 def compute_b_asymmetry(data):
     """
     Computes the CP asymmetry for the B mesons in the dataset given.
@@ -95,9 +97,10 @@ def compute_b_asymmetry(data):
     """
     # count the B mesons
     total_B, total_B_plus, total_B_minus = count_B_mesons(data)
-    # compute asymmetry
+    #  compute asymmetry
     cp_asy = (total_B_plus - total_B_minus) / (total_B)
     return cp_asy
+
 
 def compute_asymmetry_uncertainty(data):
     """
@@ -119,9 +122,10 @@ def compute_asymmetry_uncertainty(data):
     uncertainty = (2 * math.sqrt(N_plus * N_minus)) / (N_total**1.5)
     return uncertainty
 
+
 def compute_peaks_asymmetry(data):
     peaks_data = data[
-        (data['dimuon-system invariant mass'].between(3000, 3150)) | 
+        (data['dimuon-system invariant mass'].between(3000, 3150)) |
         (data['dimuon-system invariant mass'].between(3600, 3750))
     ]
 
@@ -130,12 +134,13 @@ def compute_peaks_asymmetry(data):
 
     return cpa, cpa_uncert
 
+
 def compute_rare_asymmetry(data):
     """
     Computes CP asymmetry for the non-resonant mass regions.
     """
     rare_data = data[~(
-        (data['dimuon-system invariant mass'].between(3000, 3150)) | 
+        (data['dimuon-system invariant mass'].between(3000, 3150)) |
         (data['dimuon-system invariant mass'].between(3600, 3750)))
     ]
 
@@ -146,10 +151,12 @@ def compute_rare_asymmetry(data):
 
 # %% Main Execution
 
+
 if __name__ == "__main__":
     signal_data = __load_signal_data()
     cpa_rare, uncertainty_rare = compute_rare_asymmetry(signal_data)
     cpa_peaks, uncertianty_peaks = compute_peaks_asymmetry(signal_data)
 
-    print(f"CP Asymmetry in Rare Decay Regions: {cpa_rare} ± {uncertainty_rare}")
+    print(
+        f"CP Asymmetry in Rare Decay Regions: {cpa_rare} ± {uncertainty_rare}")
     print(f"CP Asymmetry in Resonant Peaks: {cpa_peaks} ± {uncertianty_peaks}")

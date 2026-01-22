@@ -14,6 +14,25 @@ sns.set_context('paper')
 sns.set_palette("colorblind")
 
 
+def load_samesign():
+    """
+    Load the full 2011 dataset.
+    Returns:
+    data_2011 : pd.DataFrame
+        The full 2011 dataset.
+    """
+    with open('datasets/samesign_2011.pkl', 'rb') as infile:
+        samesign_2011 = pickle.load(infile)
+
+    with open('datasets/samesign_2012.pkl', 'rb') as infile:
+        samesign_2012 = pickle.load(infile)
+
+    samesign = pd.concat([samesign_2011, samesign_2012], ignore_index=True)
+    samesign.hist(column='B invariant mass', bins=100)
+
+    return samesign
+
+
 def load_magnet_data():
     """
     Load the 2012 datasets for Magnet Up and Magnet Down.
@@ -80,9 +99,14 @@ class seperate:
             raise ValueError(
                 "dataset must be either '2011' or '2012'")
 
-        signal = dataset[dataset['dimuon-system invariant mass'].between(3070, 3200) |
-                         dataset['dimuon-system invariant mass'].between(3600, 3750)]
-        background = dataset[(dataset['B invariant mass'] > 5400)]
+        is_signal = (dataset['dimuon-system invariant mass'].between(3070, 3200) |
+                     dataset['dimuon-system invariant mass'].between(3600, 3750))
+
+        is_background = (dataset['B invariant mass'] > 5400)
+
+        #  not used unless k=1
+        signal = dataset[is_signal]
+        background = dataset[is_background]
 
         if plot is True:
             hist = plt.hist(signal['dimuon-system invariant mass'], bins=50)
@@ -96,15 +120,15 @@ class seperate:
             plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
             plt.show()
 
-        is_signal = (dataset['dimuon-system invariant mass'].between(3070, 3200) |
-                     dataset['dimuon-system invariant mass'].between(3600, 3750))
-
-        is_background = (dataset['B invariant mass'] > 5400)
-
         dataset['label'] = -1
         dataset.loc[is_signal, 'label'] = 1
         dataset.loc[is_background, 'label'] = 0
         dataset = dataset[dataset['label'] != -1].reset_index(drop=True)
+
+        samesign = load_samesign()
+        samesign['label'] = 0  # all background
+        dataset = pd.concat([dataset, samesign],
+                            ignore_index=True)
 
         if k is not None:
             data_shuffled = dataset.sample(
@@ -178,16 +202,6 @@ class seperate:
         return self.__dataset
 
 
-def samesign():
-    dataset = load_2011_data()
-    data = dataset['Same-sign muon assumed particle type']
-    hist = plt.hist(data, bins=150)
-    plt.xlabel(r'Same-sign muon invariant mass / MeV/$c^2$')
-    plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
-    plt.show()
-    return data
-
-
 # %% Initial B invariant mass filtering
 def __task1():
     dataset = load_2011_data()
@@ -234,3 +248,7 @@ def __task2():
 
     print(
         f"Invariant mass peaks: {dataset['dimuon-system invariant mass'][peaks].values}")
+
+
+if __name__ == "__main__":
+    load_samesign()

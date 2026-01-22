@@ -1,7 +1,7 @@
 """
-Runs predictions for k folded BDT models on data and visualises the results. 
-Also finds the optimal cutoff probability to classify signal and background events, and filters partially 
-reconstructed, peaking and misidentified backgrounds (by sideband subtraction). 
+Runs predictions for k folded BDT models on data and visualises the results.
+Also finds the optimal cutoff probability to classify signal and background events, and filters partially
+reconstructed, peaking and misidentified backgrounds (by sideband subtraction).
 
 15/01 - created
 """
@@ -16,6 +16,21 @@ import glob
 from scipy.optimize import curve_fit
 sns.set_style('darkgrid')
 sns.set_context('paper')
+
+
+def __load_sim_data():
+    """
+    Load the rapidsim dataset for Kmumu.
+    Returns:
+    data : pd.DataFrame
+        The rapidsim Kmumu dataset.
+    """
+    with open('datasets/rapidsim_Kmumu.pkl', 'rb') as infile:
+        data = pickle.load(infile)
+
+    data.hist(column='B invariant mass', bins=100)
+    return data
+
 # %% prediction class
 
 
@@ -185,10 +200,10 @@ class BDT_Analysis:
 
         Parameters
         ----------
-        data : pd.DataFrame
+        data: pd.DataFrame
             DataFrame containing 'signal_probability' column.
-        threshold : float
-            Probability threshold to classify signal events.    
+        threshold: float
+            Probability threshold to classify signal events.
         """
         data['signal'] = (data['signal_probability'] >= threshold).astype(int)
         data.drop(columns=['signal_probability'], inplace=True)
@@ -315,6 +330,7 @@ def rare_decay_analysis(data):
 
 
 if __name__ == "__main__":
+    __load_sim_data()
     analyse = BDT_Analysis()
     analyse.save_cleaned_data()
     cleaned_data = analyse.cleaned_data()
