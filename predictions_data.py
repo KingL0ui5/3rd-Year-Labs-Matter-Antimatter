@@ -136,6 +136,53 @@ class BDT_Analysis:
         # Signal + Background
         return BDT_Analysis.__crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
 
+    @staticmethod
+    def crystal_ball_fit_signal_only(data):
+        # 1. Filter for signal and mass window
+        data = data[data['signal'] == 1].copy()
+        mask = (data['B invariant mass'] >= 5100) & (data['B invariant mass'] <= 5500)
+        data = data[mask].reset_index(drop=True)
+
+        # 2. Histogramming
+        hist, bin_edges = np.histogram(data['B invariant mass'], bins=100, range=(5100, 5500))
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+        # 3. Initial Parameters: [mu, sigma, alpha, n, Amplitude]
+        # alpha: tail crossover, n: power-law exponent
+        p0 = [5280, 18, 1.2, 3, np.max(hist)]
+        
+        try:
+            # Fit using ONLY the Crystal Ball function
+            popt, pcov = curve_fit(BDT_Analysis.__crystal_ball, bin_centers, hist, p0=p0,
+                                bounds=([5250, 5, 0.1, 0.5, 0],
+                                        [5350, 60, 5.0, 20, np.inf]))
+        except RuntimeError:
+            print("Fit failed.")
+            return None
+
+        # 4. Plotting
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Plot Data
+        ax.hist(data['B invariant mass'], bins=100, range=(5100, 5500), 
+                alpha=0.4, label='Signal Data', color='gray')
+        
+        # Plot Fit
+        x_plot = np.linspace(5100, 5500, 1000)
+        y_plot = BDT_Analysis.__crystal_ball(x_plot, *popt)
+        ax.plot(x_plot, y_plot, 'r-', lw=2, label=f'CB Fit ($\mu={popt[0]:.2f}$)')
+        
+        ax.set_title("B Meson Signal Invariant Mass (Crystal Ball Fit)")
+        ax.set_xlabel(r'Mass [MeV/$c^2$]')
+        ax.set_ylabel('Candidates')
+        ax.legend()
+
+        np.save('data/popt_crystal_ball.npy', popt)
+        print('Parameters saved to popt_crystal_ball.npy')
+        plt.show()
+
+        return popt
+
     def __background_fit_cleaning(self, data):
         data = data[data['signal'] == 1].copy()
         data = data[(data['B invariant mass'] >= 5200) & (
@@ -191,7 +238,54 @@ class BDT_Analysis:
         plt.show()
 
         return data
+    
+    @staticmethod
+    def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_ball.npy'):
+        """
+        Loads saved Crystal Ball parameters, overlays them on new data,
+        and calculates residuals between the two.
+        """
+        # 1. Load the parameters from the previous fit
+        # popt_saved should be [mu, sigma, alpha, n, Amplitude]
+        popt_saved = np.load(params_path)
 
+        # 2. Histogram the new data
+        # Use the same range and bins as your original fit for consistency
+        hist, bin_edges = np.histogram(new_data['B invariant mass'], bins=200, range=(5000, 5500))
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+        # 3. Evaluate the saved model on the new bin centers
+        # Note: If your saved popt has 5 params, use __crystal_ball. 
+        # If it has 8, use __total_fit_func.
+        fit_on_new_data = BDT_Analysis.__crystal_ball(bin_centers, *popt_saved)
+
+        # 4. Calculate Residuals
+        residuals = hist - fit_on_new_data
+
+        # 5. Plotting
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True, 
+                                    gridspec_kw={'height_ratios': [3, 1]})
+
+        # Top plot: New Data + Saved Fit Overlay
+        ax1.hist(new_data['B invariant mass'], bins=200, range=(5000, 5500), 
+                alpha=0.3, label='New Data', color='gray')
+        ax1.plot(bin_centers, fit_on_new_data, 'r-', lw=2, 
+                label='Saved Fit Overlay (from .npy)')
+        ax1.set_ylabel("Candidates")
+        ax1.legend()
+        ax1.set_title("Overlay of Saved Model on New Data")
+
+        # Bottom plot: Residuals
+        ax2.errorbar(bin_centers, residuals, yerr=np.sqrt(hist), fmt='ko', markersize=2)
+        ax2.axhline(0, color='red', linestyle='--')
+        ax2.set_ylabel("Data - Model")
+        ax2.set_xlabel(r'B candidate mass / MeV/$c^2$')
+
+        plt.tight_layout()
+        plt.show()
+
+        return residuals
+    
     #  - - - - - - - - - - - - - - - - - - - - - - - - - signal cutoff methods - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @staticmethod
     def __determine_signal(data, threshold):
@@ -311,7 +405,6 @@ def plot_resulting_dimuon_masses(data):
     plt.legend()
     plt.show()
 
-
 def rare_decay_analysis(data):
     # We take out the peaks from the dimuon masses:
     signal_region_1 = (data['dimuon-system invariant mass'] < 3040) | (
@@ -336,7 +429,8 @@ if __name__ == "__main__":
     analyse.save_cleaned_data()
     cleaned_data = analyse.cleaned_data()
 
-    analyze_k_mu_system(cleaned_data)
-    plot_resulting_dimuon_masses(cleaned_data)
-    rare_decay_data = rare_decay_analysis(cleaned_data)
-    rare_decay_data.to_pickle('data/rare_decay_data.pkl')
+    #analyze_k_mu_system(cleaned_data)
+    #plot_resulting_dimuon_masses(cleaned_data)
+    #rare_decay_data = rare_decay_analysis(cleaned_data)
+    #rare_decay_data.to_pickle('data/rare_decay_data.pkl')
+    BDT_Analysis.overlay_and_calculate_residuals(cleaned_data)
