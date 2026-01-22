@@ -39,9 +39,6 @@ class BDT_Analysis:
         data = self.__classify_data(hist=True)
         self._cleaned_data = self.__background_fit_cleaning(data)
 
-        if plot:
-            self.__plot_resulting_dimuon_masses(self._cleaned_data)
-
     # - - - - - - - - - - - - - - - - - - run predictions and classify - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     def __run_predictions(self):
         """
@@ -179,16 +176,6 @@ class BDT_Analysis:
         plt.show()
 
         return data
-
-    @staticmethod
-    def __plot_resulting_dimuon_masses(data):
-        plt.figure(figsize=(10, 6))
-        sns.histplot(data=data, x='dimuon-system invariant mass',
-                     bins=100, color='purple')
-        plt.xlabel(r'Dimuon System Invariant Mass [MeV/$c^2$]')
-        plt.ylabel('Candidates')
-        plt.title('Dimuon System Invariant Mass Spectrum After Background Cleaning')
-        plt.show()
 
     #  - - - - - - - - - - - - - - - - - - - - - - - - - signal cutoff methods - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @staticmethod
