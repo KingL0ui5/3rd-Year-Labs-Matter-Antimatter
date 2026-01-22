@@ -3,7 +3,9 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 20/01 - created
 """
 
+import numpy as np
 import pickle
+import math
 
 # %% Data Loading Functions
 
@@ -65,7 +67,6 @@ def __load_simulation_data():
 
 # %% CP Asymmetry Calculations
 
-
 def count_B_mesons(data):
     """
     Count the total number of B mesons in the dataset, and seperate them into B+ and B- mesons.
@@ -83,82 +84,73 @@ def count_B_mesons(data):
 
     return total_B, total_B_plus, total_B_minus
 
-
 def compute_b_asymmetry(data):
+    """
+    Computes the CP asymmetry for the B mesons in the dataset given.
+    parameters:
+    data : pd.DataFrame
+        The dataset to evaluate.
+    returns:
+    cp_asy : float
+        The CP asymmetry value for the B mesons in the dataset.
+    """
+    # count the B mesons
     total_B, total_B_plus, total_B_minus = count_B_mesons(data)
-    print(f"Total number of B mesons: {total_B}")
-    print(f"Total number of B+ mesons: {total_B_plus}")
-    print(f"Total number of B- mesons: {total_B_minus}")
-    print(
-        f"CP Asymmetry: {(total_B_plus - total_B_minus) / (total_B_plus + total_B_minus):.4f}")
+    # compute asymmetry
+    cp_asy = (total_B_plus - total_B_minus) / (total_B)
+    return cp_asy
 
+def compute_asymmetry_uncertainty(data):
+    """
+    Compute the statistical uncertainty on the CP asymmetry measurement.
+    Uses the propagation of Poisson errors.
 
-def compute_dimuon_asymmetry(data):
-    # Ensure we have the weights from the previous background fit
-    # Standard J/psi window
-    jpsi_mask = data['dimuon-system invariant mass'].between(3000, 3150)
-    pos_events = data[jpsi_mask & (data['B assumed particle type'] > 0)]
-    neg_events = data[jpsi_mask & (data['B assumed particle type'] < 0)]
+    parameters:
+    data : pd.DataFrame
+        The dataset to evaluate.
 
-    yield_pos_jpsi = pos_events['event_weight'].sum()
-    yield_neg_jpsi = neg_events['event_weight'].sum()
+    returns:
+    uncertainty : float
+        The statistical uncertainty on the CP asymmetry.
+    """
+    N_total, N_plus, N_minus = count_B_mesons(data)
 
-    # We do the same for the psi(2S) window, separate to the J/psi
-    # Standard psi(2S) window
-    psi2s_mask = data['dimuon-system invariant mass'].between(3600, 3750)
-    pos_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] > 0)]
-    neg_events_psi2s = data[psi2s_mask & (data['B assumed particle type'] < 0)]
-    yield_pos_psi2s = pos_events_psi2s['event_weight'].sum()
-    yield_neg_psi2s = neg_events_psi2s['event_weight'].sum()
+    if N_total <= 0:
+        return 0.0
+    uncertainty = (2 * math.sqrt(N_plus * N_minus)) / (N_total**1.5)
+    return uncertainty
 
-    if (yield_pos_jpsi + yield_neg_jpsi) == 0:
-        return 0
+def compute_peaks_asymmetry(data):
+    peaks_data = data[
+        (data['dimuon-system invariant mass'].between(3000, 3150)) | 
+        (data['dimuon-system invariant mass'].between(3600, 3750))
+    ]
 
-    if (yield_pos_psi2s + yield_neg_psi2s) == 0:
-        return 0
+    cpa = compute_b_asymmetry(peaks_data)
+    cpa_uncert = compute_asymmetry_uncertainty(peaks_data)
 
-    cp_asymmetry_Jpsi = (yield_pos_jpsi - yield_neg_jpsi) / \
-        (yield_pos_jpsi + yield_neg_jpsi)
-    cp_asymmetry_psi2s = (yield_pos_psi2s - yield_neg_psi2s) / \
-        (yield_pos_psi2s + yield_neg_psi2s)
+    return cpa, cpa_uncert
 
-    print(f'Signal Yield (B+ J/psi): {yield_pos_jpsi:.2f}')
-    print(f'Signal Yield (B- J/psi): {yield_neg_jpsi:.2f}')
-    print(f'Signal Yield (B+ psi(2S)): {yield_pos_psi2s:.2f}')
-    print(f'Signal Yield (B- psi(2S)): {yield_neg_psi2s:.2f}')
-    print(f'CP Asymmetry (J/psi): {cp_asymmetry_Jpsi:.4f}')
-    print(f'CP Asymmetry (psi(2S)): {cp_asymmetry_psi2s:.4f}')
+def compute_rare_asymmetry(data):
+    """
+    Computes CP asymmetry for the non-resonant mass regions.
+    """
+    rare_data = data[~(
+        (data['dimuon-system invariant mass'].between(3000, 3150)) | 
+        (data['dimuon-system invariant mass'].between(3600, 3750)))
+    ]
 
-    return cp_asymmetry_Jpsi, cp_asymmetry_psi2s
+    cpa = compute_b_asymmetry(rare_data)
+    cpa_uncert = compute_asymmetry_uncertainty(rare_data)
+
+    return cpa, cpa_uncert
 
 # %% Main Execution
 
-
-def CP_asymmetry_mag():
-    mag_data_up, mag_data_down = __load_cleaned_mag_data()
-    print("- - - - - - - - - - - - - - Magnetic DOWN Data CP Asymmetry: - - - - - - - - - - - - - - ")
-    compute_b_asymmetry(mag_data_down)
-    compute_dimuon_asymmetry(mag_data_down)
-    print("- - - - - - - - - - - - - -Magnetic UP Data CP Asymmetry: - - - - - - - - - - - - - -")
-    compute_b_asymmetry(mag_data_up)
-    compute_dimuon_asymmetry(mag_data_up)
-
-
-def CP_asymmetry_signal():
-    print("- - - - - - - - - - - - - - Signal Data CP Asymmetry: - - - - - - - - - - - - - - ")
-    signal_data = __load_signal_data()
-    compute_b_asymmetry(signal_data)
-    compute_dimuon_asymmetry(signal_data)
-
-
-def rare_decay_asymmetry():
-    print("- - - - - - - - - - - - - - Rare Decay Data CP Asymmetry: - - - - - - - - - - - - - - ")
-    rare_decay_data = __load_rare_decay_data()
-    compute_b_asymmetry(rare_decay_data)
-    compute_dimuon_asymmetry(rare_decay_data)
-
-
 if __name__ == "__main__":
-    CP_asymmetry_mag()
-    CP_asymmetry_signal()
-    rare_decay_asymmetry()
+    mag_up, mag_down = __load_cleaned_mag_data()
+    cpa_rare, uncertainty_rare = compute_rare_asymmetry(mag_down)
+    cpa_peaks, uncertianty_peaks = compute_peaks_asymmetry(mag_down)
+
+    print(f"CP Asymmetry in Rare Decay Regions: {cpa_rare} ± {uncertainty_rare}")
+    print(f"CP Asymmetry in Resonant Peaks: {cpa_peaks} ± {uncertianty_peaks}")
