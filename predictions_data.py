@@ -242,49 +242,50 @@ class BDT_Analysis:
     @staticmethod
     def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_ball.npy'):
         """
-        Loads saved Crystal Ball parameters, overlays them on new data,
-        and calculates residuals between the two.
+        Loads saved Crystal Ball parameters, scales the amplitude to the new data,
+        overlays them, and calculates residuals.
         """
-        # 1. Load the parameters from the previous fit
-        # popt_saved should be [mu, sigma, alpha, n, Amplitude]
         popt_saved = np.load(params_path)
-
-        # 2. Histogram the new data
-        # Use the same range and bins as your original fit for consistency
-        hist, bin_edges = np.histogram(new_data['B invariant mass'], bins=200, range=(5000, 5500))
+        
+        hist, bin_edges = np.histogram(new_data['B invariant mass'], bins=200, range=(5175, 5400))
         bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
-        # 3. Evaluate the saved model on the new bin centers
-        # Note: If your saved popt has 5 params, use __crystal_ball. 
-        # If it has 8, use __total_fit_func.
-        fit_on_new_data = BDT_Analysis.__crystal_ball(bin_centers, *popt_saved)
+        scale_factor = np.max(hist) / popt_saved[4]
+        popt_scaled = popt_saved.copy()
+        popt_scaled[4] = popt_saved[4] * scale_factor
 
-        # 4. Calculate Residuals
+        fit_on_new_data = BDT_Analysis.__crystal_ball(bin_centers, *popt_scaled)
+
         residuals = hist - fit_on_new_data
 
-        # 5. Plotting
+        mask = hist > 0
+        chi_sq = np.sum(((hist[mask] - fit_on_new_data[mask])**2) / hist[mask])
+        degrees_of_freedom = len(hist[mask]) - len(popt_saved)
+        reduced_chi_sq = chi_sq / degrees_of_freedom
+
+        print(f"Reduced Chi-Squared: {reduced_chi_sq:.4f}")
+
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True, 
                                     gridspec_kw={'height_ratios': [3, 1]})
 
-        # Top plot: New Data + Saved Fit Overlay
-        ax1.hist(new_data['B invariant mass'], bins=200, range=(5000, 5500), 
-                alpha=0.3, label='New Data', color='gray')
+        ax1.hist(new_data['B invariant mass'], bins=200, range=(5175, 5400), 
+                alpha=0.3, label='Experimental Data', color='black')
         ax1.plot(bin_centers, fit_on_new_data, 'r-', lw=2, 
-                label='Saved Fit Overlay (from .npy)')
+                label=f'Simulated Signal (Scale: {scale_factor:.2f})')
         ax1.set_ylabel("Candidates")
+        ax1.set_title('Overlay of the simulated signal with the experimental data')
         ax1.legend()
-        ax1.set_title("Overlay of Saved Model on New Data")
 
-        # Bottom plot: Residuals
         ax2.errorbar(bin_centers, residuals, yerr=np.sqrt(hist), fmt='ko', markersize=2)
         ax2.axhline(0, color='red', linestyle='--')
         ax2.set_ylabel("Data - Model")
         ax2.set_xlabel(r'B candidate mass / MeV/$c^2$')
+        ax2.set_title('Residuals between the two datasets')
 
         plt.tight_layout()
         plt.show()
 
-        return residuals
+        return residuals, reduced_chi_sq
     
     #  - - - - - - - - - - - - - - - - - - - - - - - - - signal cutoff methods - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
     @staticmethod
