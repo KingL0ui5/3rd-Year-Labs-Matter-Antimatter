@@ -5,6 +5,12 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 
 import pickle
 import math
+import dimuon_binning
+import matplotlib.pyplot as plt
+import seaborn as sns 
+sns.set_style('darkgrid')
+sns.set_context('paper')
+
 
 # %% Data Loading Functions
 
@@ -39,66 +45,45 @@ def __load_cleaned_mag_data():
 # %% CP Asymmetry Calculations
 
 
-def count_B_mesons(data):
-    """
-    Count the total number of B mesons in the dataset, and seperate them into B+ and B- mesons.
-    returns:
-    total_B : int
-        Total number of B mesons in the dataset
-    total_B_plus : int
-        Total number of B+ mesons in the dataset
-    total_B_minus : int
-        Total number of B- mesons in the dataset
-    """
-    total_B = data.shape[0]
-    total_B_plus = data[data['Kaon assumed particle type']
-                        > 0]['event_weight'].sum()
-    total_B_minus = data[data['Kaon assumed particle type']
-                         < 0]['event_weight'].sum()
-    return total_B, total_B_plus, total_B_minus
-
-
-def compute_b_asymmetry(data):
-    # count the B mesons using weights
-    _, total_B_plus, total_B_minus = count_B_mesons(data)
-    weighted_total = total_B_plus + total_B_minus
+def compute_b_asymmetry(B_plus_count, B_minus_count):
+    weighted_total = B_plus_count + B_minus_count
     if weighted_total == 0:
         return 0
-    cp_asy = (total_B_plus - total_B_minus) / weighted_total
+    cp_asy = (B_plus_count - B_minus_count) / weighted_total
     return cp_asy
 
 
-def compute_weighted_asymmetry_uncertainty(data):
-    """
-    Compute statistical uncertainty on CP asymmetry using weighted events.
+# def compute_weighted_asymmetry_uncertainty(data):
+#     """
+#     Compute statistical uncertainty on CP asymmetry using weighted events.
 
-    Formula: sigma_A = (2 * sqrt(N_minus^2 * var_plus + N_plus^2 * var_minus)) / (N_total^2)
-    where var = sum(weights^2).
-    """
-    # Separate the weights for B+ and B-
-    weights_plus = data[data['Kaon assumed particle type'] > 0]['event_weight']
-    weights_minus = data[data['Kaon assumed particle type']
-                         < 0]['event_weight']
+#     Formula: sigma_A = (2 * sqrt(N_minus^2 * var_plus + N_plus^2 * var_minus)) / (N_total^2)
+#     where var = sum(weights^2).
+#     """
+#     # Separate the weights for B+ and B-
+#     weights_plus = data[data['Kaon assumed particle type'] > 0]['event_weight']
+#     weights_minus = data[data['Kaon assumed particle type']
+#                          < 0]['event_weight']
 
-    # Sum of weights (The 'Yield')
-    N_plus = weights_plus.sum()
-    N_minus = weights_minus.sum()
-    N_total = N_plus + N_minus
+#     # Sum of weights (The 'Yield')
+#     N_plus = weights_plus.sum()
+#     N_minus = weights_minus.sum()
+#     N_total = N_plus + N_minus
 
-    if N_total <= 0:
-        return 0.0
+#     if N_total <= 0:
+#         return 0.0
 
-    # Sum of weights squared (The 'Variance')
-    var_plus = (weights_plus**2).sum()
-    var_minus = (weights_minus**2).sum()
+#     # Sum of weights squared (The 'Variance')
+#     var_plus = (weights_plus**2).sum()
+#     var_minus = (weights_minus**2).sum()
 
-    # Propagation of error formula
-    numerator = 2 * math.sqrt((N_minus**2 * var_plus) +
-                              (N_plus**2 * var_minus))
-    denominator = N_total**2
+#     # Propagation of error formula
+#     numerator = 2 * math.sqrt((N_minus**2 * var_plus) +
+#                               (N_plus**2 * var_minus))
+#     denominator = N_total**2
 
-    uncertainty = numerator / denominator
-    return uncertainty
+#     uncertainty = numerator / denominator
+#     return uncertainty
 
 
 def compute_asymmetry_uncertainty(data):
@@ -114,105 +99,45 @@ def compute_asymmetry_uncertainty(data):
     uncertainty : float
         The statistical uncertainty on the CP asymmetry.
     """
-    N_total, N_plus, N_minus = count_B_mesons(data)
+    # must return uncertainty
+    pass
+    # N_total, N_plus, N_minus = count_B_mesons(data)
 
-    if N_total <= 0:
-        return 0.0
-    uncertainty = (2 * math.sqrt(N_plus * N_minus)) / (N_total**1.5)
-    return uncertainty
-
-
-def compute_peaks_asymmetry(data):
-    peaks_data = data[
-        (data['dimuon-system invariant mass'].between(3000, 3150)) |
-        (data['dimuon-system invariant mass'].between(3600, 3750))
-    ]
-
-    cpa = compute_b_asymmetry(peaks_data)
-    cpa_uncert = compute_weighted_asymmetry_uncertainty(peaks_data)
-
-    return cpa, cpa_uncert
-
-
-def compute_rare_asymmetry(data):
-    """
-    Computes CP asymmetry for the non-resonant mass regions.
-    """
-    rare_data = data[~(
-        (data['dimuon-system invariant mass'].between(3000, 3150)) |
-        (data['dimuon-system invariant mass'].between(3600, 3750)))
-    ]
-
-    cpa = compute_b_asymmetry(rare_data)
-    cpa_uncert = compute_weighted_asymmetry_uncertainty(rare_data)
-
-    return cpa, cpa_uncert
-
-
-def compute_penguin_cp_symmetry(cpa_rare, cpa_peaks, cpa_rare_unc, cpa_peaks_unc):
-    """
-    Calculates the final physical CP asymmetry by subtracting the 
-    instrumental bias (measured in resonant peaks) from the raw rare asymmetry.
-
-    Parameters:
-    cpa_rare (float): Raw CP asymmetry in the rare decay region.
-    cpa_peaks (float): Raw CP asymmetry in the resonant control region.
-    cpa_rare_unc (float): Uncertainty of the rare region asymmetry.
-    cpa_peaks_unc (float): Uncertainty of the resonant region asymmetry.
-
-    Returns:
-    tuple: (final_cp_asymmetry, final_uncertainty)
-    """
-    final_cp_asymmetry = cpa_rare - cpa_peaks
-    final_uncertainty = math.sqrt(cpa_rare_unc**2 + cpa_peaks_unc**2)
-
-    return final_cp_asymmetry, final_uncertainty
+    # if N_total <= 0:
+    #     return 0.0
+    # uncertainty = (2 * math.sqrt(N_plus * N_minus)) / (N_total**1.5)
+    # return uncertainty
 
 # %% Main Execution
+
+def compute_asymmetry(data, plot: bool = False):
+    counts, uncertaintes = dimuon_binning.B_counts(data, n_bins=5)
+
+    asy = []
+    for bin_counts, uncertainty in zip(counts, uncertaintes):
+        N_plus, N_minus = bin_counts
+        cp_asy = compute_b_asymmetry(N_plus, N_minus)
+
+        uncertainty = compute_asymmetry_uncertainty(uncertainty)
+        asy.append((cp_asy, uncertainty))
+
+    if plot:
+        plt.errorbar(range(len(asy)), [a[0] for a in asy], yerr=[a[1] for a in asy], fmt='o')
+        plt.xlabel('Dimuon Mass Bin')
+        plt.ylabel('CP Asymmetry')
+        plt.title('CP Asymmetry vs Dimuon Mass Bin (2011 Signal Data)')
+        plt.axhline(0, color='red', linestyle='--')
+        plt.show()
+
+    return asy
+
+
 
 
 if __name__ == "__main__":
     signal_data = __load_signal_data()
-    cpa_rare_val, uncertainty_rare_val = compute_rare_asymmetry(signal_data)
-    cpa_peaks_val, uncertianty_peaks_val = compute_peaks_asymmetry(signal_data)
-    final_cp_asy_val, final_cp_asy_unc_val = compute_penguin_cp_symmetry(cpa_rare_val, cpa_peaks_val,
-                                                                         uncertainty_rare_val, uncertianty_peaks_val)
-
-    print('================================================')
-    print(
-        f"CP Asymmetry in Rare Decay Regions: {cpa_rare_val} ± {uncertainty_rare_val}")
-    print(
-        f"CP Asymmetry in Resonant Peaks: {cpa_peaks_val} ± {uncertianty_peaks_val}")
-
-    print('================================================')
-    print(
-        f'The rare case CP-violation value is: {final_cp_asy_val} $\pm$ {final_cp_asy_unc_val}.')
-
-    mag_up_data, mag_down_data = __load_cleaned_mag_data()
-
-    cpa_rare_mag_up, uncert_rare_mag_up = compute_rare_asymmetry(mag_up_data)
-    cpa_peaks_mag_up, uncert_peaks_mag_up = compute_peaks_asymmetry(
-        mag_up_data)
-    final_cp_asy_mag_up, final_unc_mag_up = compute_penguin_cp_symmetry(
-        cpa_rare_mag_up, cpa_peaks_mag_up, uncert_rare_mag_up, uncert_peaks_mag_up)
-    print('================================================')
-    print(
-        f'Magnetic Up CP Asymmetry in Rare Decay Regions: {cpa_rare_mag_up} ± {uncert_rare_mag_up}')
-    print(
-        f'Magnetic Up CP Asymmetry in Resonant Peaks: {cpa_peaks_mag_up} ± {uncert_peaks_mag_up}')
-    print(
-        f'The Magnetic Up CP-violation value is: {final_cp_asy_mag_up} $\pm$ {final_unc_mag_up}.')
-
-    cpa_rare_mag_down, uncert_rare_mag_down = compute_rare_asymmetry(
-        mag_down_data)
-    cpa_peaks_mag_down, uncert_peaks_mag_down = compute_peaks_asymmetry(
-        mag_down_data)
-    final_cp_asy_mag_down, final_unc_mag_down = compute_penguin_cp_symmetry(
-        cpa_rare_mag_down, cpa_peaks_mag_down, uncert_rare_mag_down, uncert_peaks_mag_down)
-    print('================================================')
-    print(
-        f'Magnetic Down CP Asymmetry in Rare Decay Regions: {cpa_rare_mag_down} ± {uncert_rare_mag_down}')
-    print(
-        f'Magnetic Down CP Asymmetry in Resonant Peaks: {cpa_peaks_mag_down} ± {uncert_peaks_mag_down}')
-    print(
-        f'The Magnetic Down CP-violation value is: {final_cp_asy_mag_down} $\pm$ {final_unc_mag_down}.')
+    compute_asymmetry(signal_data, plot=True)
+    
+    mag_up, mag_down = __load_cleaned_mag_data()
+    compute_asymmetry(mag_up, plot=True)
+    compute_asymmetry(mag_down, plot=True)  
