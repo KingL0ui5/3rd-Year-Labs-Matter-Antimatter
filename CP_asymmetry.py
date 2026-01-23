@@ -44,69 +44,17 @@ def __load_cleaned_mag_data():
 
 # %% CP Asymmetry Calculations
 
-
-def compute_b_asymmetry(B_plus_count, B_minus_count):
+def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus_uncertainty):
     weighted_total = B_plus_count + B_minus_count
-    if weighted_total == 0:
-        return 0
     cp_asy = (B_plus_count - B_minus_count) / weighted_total
-    return cp_asy
 
 
-# def compute_weighted_asymmetry_uncertainty(data):
-#     """
-#     Compute statistical uncertainty on CP asymmetry using weighted events.
+    uncertainty = 2/(weighted_total**2) * math.sqrt(
+        (B_minus_count * N_plus_uncertainty)**2 +
+        (B_plus_count * N_minus_uncertainty)**2
+    )
+    return cp_asy, uncertainty
 
-#     Formula: sigma_A = (2 * sqrt(N_minus^2 * var_plus + N_plus^2 * var_minus)) / (N_total^2)
-#     where var = sum(weights^2).
-#     """
-#     # Separate the weights for B+ and B-
-#     weights_plus = data[data['Kaon assumed particle type'] > 0]['event_weight']
-#     weights_minus = data[data['Kaon assumed particle type']
-#                          < 0]['event_weight']
-
-#     # Sum of weights (The 'Yield')
-#     N_plus = weights_plus.sum()
-#     N_minus = weights_minus.sum()
-#     N_total = N_plus + N_minus
-
-#     if N_total <= 0:
-#         return 0.0
-
-#     # Sum of weights squared (The 'Variance')
-#     var_plus = (weights_plus**2).sum()
-#     var_minus = (weights_minus**2).sum()
-
-#     # Propagation of error formula
-#     numerator = 2 * math.sqrt((N_minus**2 * var_plus) +
-#                               (N_plus**2 * var_minus))
-#     denominator = N_total**2
-
-#     uncertainty = numerator / denominator
-#     return uncertainty
-
-
-def compute_asymmetry_uncertainty(data):
-    """
-    Compute the statistical uncertainty on the CP asymmetry measurement.
-    Uses the propagation of Poisson errors.
-
-    parameters:
-    data : pd.DataFrame
-        The dataset to evaluate.
-
-    returns:
-    uncertainty : float
-        The statistical uncertainty on the CP asymmetry.
-    """
-    # must return uncertainty
-    pass
-    # N_total, N_plus, N_minus = count_B_mesons(data)
-
-    # if N_total <= 0:
-    #     return 0.0
-    # uncertainty = (2 * math.sqrt(N_plus * N_minus)) / (N_total**1.5)
-    # return uncertainty
 
 # %% Main Execution
 
@@ -114,11 +62,10 @@ def compute_asymmetry(data, plot: bool = False):
     counts, uncertaintes = dimuon_binning.B_counts(data, n_bins=5)
 
     asy = []
-    for bin_counts, uncertainty in zip(counts, uncertaintes):
+    for bin_counts, count_uncertainty in zip(counts, uncertaintes):
         N_plus, N_minus = bin_counts
-        cp_asy = compute_b_asymmetry(N_plus, N_minus)
-
-        uncertainty = compute_asymmetry_uncertainty(uncertainty)
+        N_plus_unc, N_minus_unc = count_uncertainty
+        cp_asy, uncertainty = compute_b_asymmetry(N_plus, N_minus, N_plus_unc, N_minus_unc)
         asy.append((cp_asy, uncertainty))
 
     if plot:
@@ -131,13 +78,10 @@ def compute_asymmetry(data, plot: bool = False):
 
     return asy
 
-
-
-
 if __name__ == "__main__":
     signal_data = __load_signal_data()
     compute_asymmetry(signal_data, plot=True)
     
     mag_up, mag_down = __load_cleaned_mag_data()
     compute_asymmetry(mag_up, plot=True)
-    compute_asymmetry(mag_down, plot=True)  
+    compute_asymmetry(mag_down, plot=True)

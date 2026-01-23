@@ -29,13 +29,15 @@ def split_Bs(data):
     return B_plus, B_minus
 
 
-def return_B_counts(data, n_bins):
+def B_counts(data, n_bins):
     """
     Returns the number of B+ and B- mesons in the dataset.
-    
+
     Parameters:
     data : pd.DataFrame
         The dataset in question.
+    n_bins : int
+        The number of bins to divide the data into based on dimuon-system invariant mass.
         
     Returns:
     tuple
@@ -45,16 +47,15 @@ def return_B_counts(data, n_bins):
     binned_B_plus = bin_data(B_plus, n_bins=n_bins)
     binned_B_minus = bin_data(B_minus, n_bins=n_bins)
 
+
     counts = []
-    for n, data in enumerate(binned_B_plus, binned_B_minus):
-        _, B_plus = background_fit_cleaning(data)
-        _, B_minus = background_fit_cleaning(data)
+    uncertaintes = []
+    for bin_p, bin_m in zip(binned_B_plus, binned_B_minus):
+        _, B_plus, B_plus_uncertainty = background_fit_cleaning(bin_p)
+        _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
         counts.append((B_plus, B_minus))
-    return counts
-
-
-    # should run fitting functions on both B+ and B- datasets seperately
-    pass
+        uncertaintes.append((B_plus_uncertainty, B_minus_uncertainty))
+    return counts, uncertaintes
     
 def crystal_ball(x, x0, sigma, alpha, n, N):
     """
@@ -176,11 +177,11 @@ if __name__ == "__main__":
     yields_errors = []
     cleaned_data = __load_data()
     binned_data = bin_data(cleaned_data, n_bins=5)
-    
+
     for n, data_bin in enumerate(binned_data):
         cleaned_df, sig_count_val, err = background_fit_cleaning(data_bin)
         final_val = float(sig_count_val)
-        
+
         yields.append(final_val)
         yields_errors.append(err)
 
