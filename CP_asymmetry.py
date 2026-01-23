@@ -62,11 +62,12 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
     )
     return cp_asy, uncertainty
 
+# We compute the CP symmetry for the peaks:
 
 # %% Main Execution
 
 def compute_asymmetry(data, plot: bool = False):
-    n_bins = 70
+    n_bins = 10
     counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins)
 
     asy = []

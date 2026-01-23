@@ -45,14 +45,21 @@ def B_counts(data, n_bins):
     binned_B_plus = bin_data(B_plus, n_bins=n_bins)
     binned_B_minus = bin_data(B_minus, n_bins=n_bins)
 
-    boundary_inv_mass = np.linspace(0, max(data['dimuon-system invariant mass']), n_bins)
+    bin_width = (max(data['dimuon-system invariant mass']) - min(data['dimuon-system invariant mass'])) / n_bins
+
+    boundary_inv_mass = np.linspace(min(data['dimuon-system invariant mass']), max(data['dimuon-system invariant mass']), n_bins)
 
 
     counts = []
     uncertaintes = []
-    for bin_p, bin_m in zip(binned_B_plus, binned_B_minus):
+    for i, (bin_p, bin_m) in enumerate(zip(binned_B_plus, binned_B_minus)):
         _, B_plus, B_plus_uncertainty = background_fit_cleaning(bin_p)
         _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
+
+        if np.isclose(B_plus, 0, atol=1) or np.isclose(B_minus, 0, atol=1):
+            boundary_inv_mass = np.delete(boundary_inv_mass,i)
+            continue
+
         counts.append((B_plus, B_minus))
         uncertaintes.append((B_plus_uncertainty, B_minus_uncertainty))
     return counts, uncertaintes, boundary_inv_mass
@@ -120,21 +127,27 @@ def background_fit_cleaning(data, plotting=True):
 
     nll = zfit.loss.ExtendedUnbinnedNLL(model=model, data=z_data)
     minimizer = zfit.minimize.Minuit()
-    
+
     try:
         result = minimizer.minimize(nll)
-        result.hesse() 
+        result.hesse()
         sig_val = float(sig_yield.numpy())
-        
+
         # Capture the actual error from the fit!
         if sig_yield in result.params:
             sig_err = result.params[sig_yield].get('error', np.sqrt(sig_val))
         else:
             sig_err = np.sqrt(max(sig_val, 1.0))
-            
-    except Exception:
+
+    except Exception as e:
+        print(f"Fit failed: {e}")
         sig_val = 0.0
         sig_err = 0.0
+    
+    if plotting:
+        # We only plot if the data isn't empty and the model exists
+        plot_zfit_results(data, model, obs)
+
     # 8. Calculate Event Weights
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
     probs_tot = model.ext_pdf(z_data).numpy()
