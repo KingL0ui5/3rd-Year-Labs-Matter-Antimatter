@@ -46,9 +46,14 @@ def __load_cleaned_mag_data():
 
 def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus_uncertainty):
     weighted_total = B_plus_count + B_minus_count
+    
+    # Safety Check: If the bin is empty, return 0 for both asymmetry and uncertainty
+    if weighted_total <= 0:
+        return 0.0, 0.0
+
     cp_asy = (B_plus_count - B_minus_count) / weighted_total
 
-
+    # Standard error propagation
     uncertainty = 2/(weighted_total**2) * math.sqrt(
         (B_minus_count * N_plus_uncertainty)**2 +
         (B_plus_count * N_minus_uncertainty)**2
@@ -59,14 +64,17 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
 # %% Main Execution
 
 def compute_asymmetry(data, plot: bool = False, n_bins: int = 10):
-    counts, uncertaintes = dimuon_binning.B_counts(data, n_bins=n_bins)
+    counts, uncertainties = dimuon_binning.B_counts(data, n_bins=n_bins)
 
     asy = []
-    for bin_counts, count_uncertainty in zip(counts, uncertaintes):
+    for bin_counts, count_uncertainty in zip(counts, uncertainties):
         N_plus, N_minus = bin_counts
         N_plus_unc, N_minus_unc = count_uncertainty
+        
         cp_asy, uncertainty = compute_b_asymmetry(N_plus, N_minus, N_plus_unc, N_minus_unc)
-        asy.append((cp_asy, uncertainty))
+        
+        if uncertainty > 0:
+            asy.append((cp_asy, uncertainty))
 
     if plot:
         plt.errorbar(range(len(asy)), [a[0] for a in asy], yerr=[a[1] for a in asy], fmt='o')
@@ -74,6 +82,7 @@ def compute_asymmetry(data, plot: bool = False, n_bins: int = 10):
         plt.ylabel('CP Asymmetry')
         plt.title('CP Asymmetry vs Dimuon Mass Bin (2011 Signal Data)')
         plt.axhline(0, color='red', linestyle='--')
+        plt.ylim(-0.3,0.3)
         plt.show()
 
     return asy

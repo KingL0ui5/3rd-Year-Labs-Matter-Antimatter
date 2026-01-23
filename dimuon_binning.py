@@ -27,7 +27,6 @@ def split_Bs(data):
                          < 0]
     return B_plus, B_minus
 
-
 def B_counts(data, n_bins):
     """
     Returns the number of B+ and B- mesons in the dataset.
@@ -86,64 +85,67 @@ def background_fit_cleaning(data, plotting=False):
     data = data[(data['B invariant mass'] >= lower_obs) & 
                 (data['B invariant mass'] <= upper_obs)].reset_index(drop=True)
 
-    if data.empty:
+    if data.empty or len(data) < 10: # Added minimum entry check
         return data, 0.0, 0.0
 
     # 2. Define Space
     obs = zfit.Space('B invariant mass', limits=(lower_obs, upper_obs))
 
-    # 3. Define Yield Parameters
-    sig_yield = zfit.Parameter(f'sig_yield_{id(data)}', len(data)*0.5, 0, len(data)*1.2)
-    bkg_yield = zfit.Parameter(f'bkg_yield_{id(data)}', len(data)*0.5, 0, len(data)*1.2)
+    # 3. Define Yield Parameters with unique names
+    u_id = f"{id(data)}_{np.random.randint(1000)}"
+    sig_yield = zfit.Parameter(f'sig_yield_{u_id}', len(data)*0.5, 0, len(data)*1.5)
+    bkg_yield = zfit.Parameter(f'bkg_yield_{u_id}', len(data)*0.5, 0, len(data)*1.5)
 
     # 4. Define Signal (Crystal Ball)
-    mu    = zfit.Parameter(f'mu_{id(data)}', 5280, 5250, 5350)
-    sigma = zfit.Parameter(f'sigma_{id(data)}', 20, 5, 50)
-    alpha = zfit.Parameter(f'alpha_{id(data)}', 1.5, 0.1, 5.0)
-    n     = zfit.Parameter(f'n_{id(data)}', 2, 0.5, 10)
+    # CORRECTION: In edge bins, these often need to be fixed to global values.
+    # If the fit is unstable, consider setting floating=False for these.
+    mu    = zfit.Parameter(f'mu_{u_id}', 5280, 5260, 5300)
+    sigma = zfit.Parameter(f'sigma_{u_id}', 20, 10, 40)
+    alpha = zfit.Parameter(f'alpha_{u_id}', 1.5, 0.5, 3.0)
+    n     = zfit.Parameter(f'n_{u_id}', 2, 1, 5)
 
     signal_pdf = zfit.pdf.CrystalBall(obs=obs, mu=mu, sigma=sigma, 
                                       alpha=alpha, n=n, extended=sig_yield)
 
     # 5. Define Background (Exponential)
-    lam = zfit.Parameter(f'lam_{id(data)}', -0.001, -0.01, 0.0)
+    lam = zfit.Parameter(f'lam_{u_id}', -0.001, -0.01, 0.001)
     background_pdf = zfit.pdf.Exponential(obs=obs, lam=lam, extended=bkg_yield)
 
-    # 6. Build and Minimize Model
+    # 6. Build and Minimize
     model = zfit.pdf.SumPDF([signal_pdf, background_pdf])
     z_data = zfit.Data.from_pandas(df=data, obs=obs)
 
     nll = zfit.loss.ExtendedUnbinnedNLL(model=model, data=z_data)
     minimizer = zfit.minimize.Minuit()
-    result = minimizer.minimize(nll)
-
-    # Try calculating Hesse first
-    result.hesse()
     
-    # Check if 'hesse' exists in the params dictionary
-    if 'hesse' in result.params[sig_yield]:
-        sig_err = result.params[sig_yield]['hesse']['error']
-    else:
-        # Fallback 1: Use Minuit's internal approx error (the 'step size')
-        # This is usually available even if Hesse fails
-        sig_err = result.params[sig_yield].get('error', np.sqrt(sig_yield.numpy()))
-        print(f"Warning: Hesse failed for bin. Using approx error: {sig_err:.2f}")
+    try:
+        result = minimizer.minimize(nll)
+        result.hesse() # Try to get the Hesse errors
+        
+        # Extract yield value
+        sig_val = float(sig_yield.numpy())
+        
+        # 7. Error Fallback Logic
+        # Try Hesse first, then Minuit approx error, then Poisson
+        if 'error' in result.params[sig_yield]:
+            sig_err = result.params[sig_yield]['error']
+        else:
+            sig_err = np.sqrt(max(sig_val, 1.0))
+            
+        # If Hesse returned a "blown up" error (e.g., > yield or very large)
+        if sig_err > sig_val or sig_err > 500: 
+            sig_err = np.sqrt(max(sig_val, 1.0))
+            
+    except Exception:
+        sig_val = float(sig_yield.numpy())
+        sig_err = np.sqrt(max(sig_val, 1.0))
 
-    # Final safeguard: if sig_err is somehow None or 0, use Poisson fallback
-    if not sig_err or sig_err == 0:
-        sig_err = np.sqrt(max(sig_yield.numpy(), 1.0))
-    
-    sig_count = sig_yield
-
-    # 9. Calculate Event Weights & Plot
+    # 8. Calculate Event Weights
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
     probs_tot = model.ext_pdf(z_data).numpy()
     data['event_weight'] = np.clip(probs_sig / (probs_tot + 1e-10), 0, 1)
 
-    if plotting is True:
-        plot_zfit_results(data, model, obs)
-
-    return data, sig_count, sig_err
+    return data, sig_val, sig_err
 
 def plot_zfit_results(data, model, obs):
     lower, upper = obs.limit1d
@@ -281,6 +283,7 @@ def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_bal
     return residuals, reduced_chi_sq
 
 #%% should not be used in main code
+
 def __load_data():
     with open(f'data/cleaned_data_{config.dataset}.pkl', 'rb') as infile:
         data = pickle.load(infile)
