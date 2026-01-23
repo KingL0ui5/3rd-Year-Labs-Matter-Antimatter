@@ -28,7 +28,7 @@ def load_samesign():
         samesign_2012 = pickle.load(infile)
 
     samesign = pd.concat([samesign_2011, samesign_2012], ignore_index=True)
-    samesign.hist(column='B invariant mass', bins=100)
+    # samesign.hist(column='B invariant mass', bins=100)
 
     return samesign
 
