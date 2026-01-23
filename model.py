@@ -25,7 +25,7 @@ seperation = filtered_data.seperate(k=k, dataset=dataset)
 sig, bkg = seperation.data(drop_cols=config.drop_cols)
 
 #  save the filtered object
-with open('data/filtered_data.pkl', 'wb') as f:
+with open(f'data/filtered_data_{dataset}.pkl', 'wb') as f:
     pickle.dump(seperation, f)
 
 # %% Model Loop
