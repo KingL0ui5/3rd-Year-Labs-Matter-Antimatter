@@ -80,7 +80,7 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
     # Signal + Background
     return crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
 
-def background_fit_cleaning(data, plotting=False):
+def background_fit_cleaning(data, plotting=True):
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
     data = data[(data['B invariant mass'] >= lower_obs) & 
@@ -123,30 +123,18 @@ def background_fit_cleaning(data, plotting=False):
     
     try:
         result = minimizer.minimize(nll)
-        result.hesse() # Try to get the Hesse errors
-        
-        # Extract yield value
+        result.hesse() 
         sig_val = float(sig_yield.numpy())
         
-        # 7. Error Fallback Logic
-        # Try Hesse first, then Minuit approx error, then Poisson
-        if 'error' in result.params[sig_yield]:
-            sig_err = result.params[sig_yield]['error']
+        # Capture the actual error from the fit!
+        if sig_yield in result.params:
+            sig_err = result.params[sig_yield].get('error', np.sqrt(sig_val))
         else:
             sig_err = np.sqrt(max(sig_val, 1.0))
             
-        # If Hesse returned a "blown up" error (e.g., > yield or very large)
-        if sig_err > sig_val or sig_err > 500: 
-            sig_err = np.sqrt(max(sig_val, 1.0))
-            
     except Exception:
-        sig_val = float(sig_yield.numpy())
-        # sig_err = np.sqrt(max(sig_val, 1.0))
-    
-    if plotting:
-        plot_zfit_results(data, model, obs)
-
-    sig_err = 0
+        sig_val = 0.0
+        sig_err = 0.0
     # 8. Calculate Event Weights
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
     probs_tot = model.ext_pdf(z_data).numpy()

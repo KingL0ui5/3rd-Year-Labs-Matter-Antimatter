@@ -66,7 +66,7 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
 # %% Main Execution
 
 def compute_asymmetry(data, plot: bool = False):
-    n_bins = 20
+    n_bins = 70
     counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins)
 
     asy = []
@@ -86,8 +86,8 @@ def compute_asymmetry(data, plot: bool = False):
         ax[0].set_yscale('log')
         ax[0].set_ylabel('Counts')
         ax[0].set_title('Dimuon Invariant Mass Distribution (Signal Data)')
-
-        ax[1].errorbar(inv_mass, [a[0] for a in asy], yerr=[a[1] for a in asy], fmt='-o', markersize=3, linewidth=1)
+        ax[1].errorbar(inv_mass, [v[0] for v in asy], yerr=[v[1] for v in asy], 
+                    fmt='o', color='tab:blue', ecolor='tab:blue', capsize=3, label='Resonance measurement')
         ax[1].set_xlabel('Invariant mass')
         ax[1].set_ylabel('CP Asymmetry')
         ax[1].axhline(0, color='red', linestyle='--')
