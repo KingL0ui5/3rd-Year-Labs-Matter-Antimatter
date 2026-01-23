@@ -45,6 +45,8 @@ def B_counts(data, n_bins):
     binned_B_plus = bin_data(B_plus, n_bins=n_bins)
     binned_B_minus = bin_data(B_minus, n_bins=n_bins)
 
+    boundary_inv_mass = np.linspace(0, max(data['dimuon-system invariant mass']), n_bins)
+
 
     counts = []
     uncertaintes = []
@@ -53,7 +55,7 @@ def B_counts(data, n_bins):
         _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
         counts.append((B_plus, B_minus))
         uncertaintes.append((B_plus_uncertainty, B_minus_uncertainty))
-    return counts, uncertaintes
+    return counts, uncertaintes, boundary_inv_mass
     
 def crystal_ball(x, x0, sigma, alpha, n, N):
     """
@@ -79,11 +81,12 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
     return crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
 
 def background_fit_cleaning(data, plotting=False):
-    # 1. Data Cleaning
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
     data = data[(data['B invariant mass'] >= lower_obs) & 
                 (data['B invariant mass'] <= upper_obs)].reset_index(drop=True)
+    
+
 
     if data.empty or len(data) < 10: # Added minimum entry check
         return data, 0.0, 0.0
@@ -138,8 +141,12 @@ def background_fit_cleaning(data, plotting=False):
             
     except Exception:
         sig_val = float(sig_yield.numpy())
-        sig_err = np.sqrt(max(sig_val, 1.0))
+        # sig_err = np.sqrt(max(sig_val, 1.0))
+    
+    if plotting:
+        plot_zfit_results(data, model, obs)
 
+    sig_err = 0
     # 8. Calculate Event Weights
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
     probs_tot = model.ext_pdf(z_data).numpy()
@@ -149,35 +156,43 @@ def background_fit_cleaning(data, plotting=False):
 
 def plot_zfit_results(data, model, obs):
     lower, upper = obs.limit1d
+    n_bins = 100
     x_plot = np.linspace(lower, upper, 1000)
-    bin_width = (upper - lower) / 100
+    bin_width = (upper - lower) / n_bins
 
     plt.figure(figsize=(10, 6))
 
-    # Plot Data
-    plt.hist(data['B invariant mass'], bins=100, alpha=0.3, label='Data', color='gray')
+    # 1. Calculate Histogram data for the scatter plot
+    counts, bin_edges = np.histogram(data['B invariant mass'], bins=n_bins, range=(lower, upper))
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    
+    # 2. Plot Data as Scatter (with Poisson errors)
+    # We use errorbar with fmt='ko' (black circles)
+    errors = np.sqrt(counts) # Poisson uncertainty
+    plt.errorbar(bin_centers, counts, yerr=errors, fmt='ko', markersize=3, 
+                 label='Data', capsize=0, elinewidth=1)
 
-    # Total Model Curve (The sum of CB and Exponential)
+    # 3. Total Model Curve
     total_yield = model.get_yield().numpy()
     y_plot_tot = model.pdf(x_plot).numpy() * total_yield * bin_width
     plt.plot(x_plot, y_plot_tot, 'r-', lw=2.5, label='Total Fit (CB + Exp)')
 
-    # Individual Components
-    # pdfs[0] is CrystalBall, pdfs[1] is Exponential
+    # 4. Individual Components
     y_sig = model.pdfs[0].pdf(x_plot).numpy() * model.pdfs[0].get_yield().numpy() * bin_width
     y_bkg = model.pdfs[1].pdf(x_plot).numpy() * model.pdfs[1].get_yield().numpy() * bin_width
 
     plt.plot(x_plot, y_sig, '--', color='tab:blue', label='Crystal Ball (Signal)')
     plt.plot(x_plot, y_bkg, '--', color='tab:orange', label='Exponential (Background)')
 
+    # Formatting
     plt.yscale('log')
-    plt.ylim(0.1, len(data) * 2) 
+    plt.ylim(0.5, counts.max() * 5) # Adjusted for log scale visibility
     plt.xlabel(r'B candidate mass [MeV/$c^2$]')
     plt.ylabel(f'Events / ({bin_width:.1f} MeV)')
     plt.legend()
     plt.show()
 
-def clean_signal(cleaned_data, plotting=False):
+def clean_signal(cleaned_data, plotting=True):
     final_signal_data = []
     yields = []
     yields_errors = []

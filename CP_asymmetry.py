@@ -24,6 +24,8 @@ def __load_signal_data():
     """
     with open('data/cleaned_data_2011.pkl', 'rb') as f:
         cleaned_data = pickle.load(f)
+
+    print(len(cleaned_data))
     return cleaned_data
 
 
@@ -63,35 +65,42 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
 
 # %% Main Execution
 
-def compute_asymmetry(data, plot: bool = False, n_bins: int = 10):
-    counts, uncertainties = dimuon_binning.B_counts(data, n_bins=n_bins)
+def compute_asymmetry(data, plot: bool = False):
+    n_bins = 20
+    counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins)
 
     asy = []
     for bin_counts, count_uncertainty in zip(counts, uncertainties):
-        N_plus, N_minus = bin_counts
-        N_plus_unc, N_minus_unc = count_uncertainty
+        B_plus, B_minus = bin_counts
+
+        # print(f"Total counts in bin: {B_plus + B_minus}")
+        B_plus_unc, B_minus_unc = count_uncertainty
         
-        cp_asy, uncertainty = compute_b_asymmetry(N_plus, N_minus, N_plus_unc, N_minus_unc)
-        
-        if uncertainty > 0:
-            asy.append((cp_asy, uncertainty))
+        cp_asy, uncertainty = compute_b_asymmetry(B_plus, B_minus, B_plus_unc, B_minus_unc)
+        asy.append((cp_asy, uncertainty))
 
     if plot:
-        plt.errorbar(range(len(asy)), [a[0] for a in asy], yerr=[a[1] for a in asy], fmt='o')
-        plt.xlabel('Dimuon Mass Bin')
-        plt.ylabel('CP Asymmetry')
-        plt.title('CP Asymmetry vs Dimuon Mass Bin (2011 Signal Data)')
-        plt.axhline(0, color='red', linestyle='--')
-        plt.ylim(-0.3,0.3)
+        fig, ax = plt.subplots(2, 1, figsize=(8, 10), sharex=True)
+        data.hist('dimuon-system invariant mass', bins=100, alpha=0.5, ax=ax[0])
+        ax[0].vlines(inv_mass, ymin=0, ymax=10e5, colors='red', linestyles='dashed', label='Bin Edges')
+        ax[0].set_yscale('log')
+        ax[0].set_ylabel('Counts')
+        ax[0].set_title('Dimuon Invariant Mass Distribution (Signal Data)')
+
+        ax[1].errorbar(inv_mass, [a[0] for a in asy], yerr=[a[1] for a in asy], fmt='-o', markersize=3, linewidth=1)
+        ax[1].set_xlabel('Invariant mass')
+        ax[1].set_ylabel('CP Asymmetry')
+        ax[1].axhline(0, color='red', linestyle='--')
+        ax[1].set_ylim(-0.25,0.25)
+        plt.title('CP Asymmetry vs Dimuon Mass Bin (Signal Data)')
         plt.show()
 
     return asy
 
 if __name__ == "__main__":
-    n_bins = 20
     signal_data = __load_signal_data()
-    compute_asymmetry(signal_data, plot=True, n_bins=n_bins)
+    compute_asymmetry(signal_data, plot=True)
     
     mag_up, mag_down = __load_cleaned_mag_data()
-    compute_asymmetry(mag_up, plot=True, n_bins=n_bins)
-    compute_asymmetry(mag_down, plot=True, n_bins=n_bins)
+    compute_asymmetry(mag_up, plot=True)
+    compute_asymmetry(mag_down, plot=True)
