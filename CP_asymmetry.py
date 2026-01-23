@@ -58,8 +58,8 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
 
 # %% Main Execution
 
-def compute_asymmetry(data, plot: bool = False):
-    counts, uncertaintes = dimuon_binning.B_counts(data, n_bins=5)
+def compute_asymmetry(data, plot: bool = False, n_bins: int = 10):
+    counts, uncertaintes = dimuon_binning.B_counts(data, n_bins=n_bins)
 
     asy = []
     for bin_counts, count_uncertainty in zip(counts, uncertaintes):
@@ -79,9 +79,10 @@ def compute_asymmetry(data, plot: bool = False):
     return asy
 
 if __name__ == "__main__":
+    n_bins = 20
     signal_data = __load_signal_data()
-    compute_asymmetry(signal_data, plot=True)
+    compute_asymmetry(signal_data, plot=True, n_bins=n_bins)
     
     mag_up, mag_down = __load_cleaned_mag_data()
-    compute_asymmetry(mag_up, plot=True)
-    compute_asymmetry(mag_down, plot=True)
+    compute_asymmetry(mag_up, plot=True, n_bins=n_bins)
+    compute_asymmetry(mag_down, plot=True, n_bins=n_bins)

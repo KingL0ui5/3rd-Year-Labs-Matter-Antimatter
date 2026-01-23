@@ -12,7 +12,6 @@ def bin_data(data, n_bins):
     binned_data = np.array_split(sorted_data, n_bins)
     return binned_data
 
-
 def split_Bs(data):
     """ 
     Splits the dataset into B+ and B- mesons based on the 'Kaon assumed particle type' column.
@@ -80,7 +79,7 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
     # Signal + Background
     return crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
 
-def background_fit_cleaning(data):
+def background_fit_cleaning(data, plotting=False):
     # 1. Data Cleaning
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
@@ -118,21 +117,31 @@ def background_fit_cleaning(data):
     minimizer = zfit.minimize.Minuit()
     result = minimizer.minimize(nll)
 
-    # 7. Calculate HESSE Errors
-    # Hesse assumes a parabolic likelihood and returns a single symmetric error
-    result.hesse() 
+    # Try calculating Hesse first
+    result.hesse()
+    
+    # Check if 'hesse' exists in the params dictionary
+    if 'hesse' in result.params[sig_yield]:
+        sig_err = result.params[sig_yield]['hesse']['error']
+    else:
+        # Fallback 1: Use Minuit's internal approx error (the 'step size')
+        # This is usually available even if Hesse fails
+        sig_err = result.params[sig_yield].get('error', np.sqrt(sig_yield.numpy()))
+        print(f"Warning: Hesse failed for bin. Using approx error: {sig_err:.2f}")
 
-    # 8. Extract Results
+    # Final safeguard: if sig_err is somehow None or 0, use Poisson fallback
+    if not sig_err or sig_err == 0:
+        sig_err = np.sqrt(max(sig_yield.numpy(), 1.0))
+    
     sig_count = sig_yield
-    # Hesse provides a single value, unlike the lower/upper pair in Minos
-    sig_err = result.params[sig_yield]['hesse']['error']
 
     # 9. Calculate Event Weights & Plot
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
     probs_tot = model.ext_pdf(z_data).numpy()
     data['event_weight'] = np.clip(probs_sig / (probs_tot + 1e-10), 0, 1)
 
-    plot_zfit_results(data, model, obs)
+    if plotting is True:
+        plot_zfit_results(data, model, obs)
 
     return data, sig_count, sig_err
 
@@ -166,6 +175,111 @@ def plot_zfit_results(data, model, obs):
     plt.legend()
     plt.show()
 
+def clean_signal(cleaned_data, plotting=False):
+    final_signal_data = []
+    yields = []
+    yields_errors = []
+    cleaned_data = __load_data()
+    binned_data = bin_data(cleaned_data, n_bins=5)
+
+    for n, data_bin in enumerate(binned_data):
+        cleaned_df, sig_count_val, err = background_fit_cleaning(data_bin, plotting=plotting)
+        final_val = float(sig_count_val)
+
+        yields.append(final_val)
+        yields_errors.append(err)
+        final_signal_data.append(cleaned_df)
+
+    print("Yields:", yields)
+    print("Errors:", yields_errors)
+
+    full_cleaned_df = pd.concat(final_signal_data, ignore_index=True)
+    print(f"Total signal-enhanced events: {len(full_cleaned_df)}")
+    # 1. Define the correct columns based on your list
+    mass_col = 'B invariant mass'
+    id_col = 'Kaon assumed particle type'
+
+    # 2. Separate B+ and B- using the Kaon ID
+    # K+ (321) -> B+ | K- (-321) -> B-
+    b_plus = full_cleaned_df[full_cleaned_df[id_col] == 321]
+    b_minus = full_cleaned_df[full_cleaned_df[id_col] == -321]
+
+    # 3. Plotting
+    plt.figure(figsize=(10, 6))
+
+    # We use the 'event_weight' column from your list to get the actual signal counts
+    plt.hist(b_plus[mass_col], bins=80, range=(5100, 5600), weights=b_plus['event_weight'],
+            histtype='step', label=r'$B^+$ ($K^+$ candidate)', color='blue', linewidth=1.5)
+
+    plt.hist(b_minus[mass_col], bins=80, range=(5100, 5600), weights=b_minus['event_weight'],
+            histtype='step', label=r'$B^-$ ($K^-$ candidate)', color='red', linewidth=1.5)
+
+    plt.xlabel(r'$B$ Invariant Mass [MeV/$c^2$]')
+    plt.ylabel('Weighted Candidates / Bin')
+    plt.title('Separated $B^+$ and $B^-$ Invariant Mass (Background Subtracted)')
+    plt.legend()
+    plt.grid(axis='y', alpha=0.3)
+    plt.show()
+
+    # 4. Final Counts
+    # Note: Use sum of weights for the "true" signal count if background was fitted
+    yield_plus = b_plus['event_weight'].sum()
+    yield_minus = b_minus['event_weight'].sum()
+
+    print(f"--- Summary ---")
+    print(f"B+ Yield (weighted): {yield_plus:.2f}")
+    print(f"B- Yield (weighted): {yield_minus:.2f}")
+    print(f"Total Yield:         {yield_plus + yield_minus:.2f}")
+
+    return full_cleaned_df, b_plus, b_minus
+
+def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_ball.npy'):
+    """
+    Loads saved Crystal Ball parameters, scales the amplitude to the new data,
+    overlays them, and calculates residuals.
+    """
+    popt_saved = np.load(params_path)
+    
+    hist, bin_edges = np.histogram(new_data['B invariant mass'], bins=200, range=(5175, 5400))
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+    scale_factor = np.max(hist) / popt_saved[4]
+    popt_scaled = popt_saved.copy()
+    popt_scaled[4] = popt_saved[4] * scale_factor
+
+    fit_on_new_data = crystal_ball(bin_centers, *popt_scaled)
+
+    residuals = hist - fit_on_new_data
+
+    mask = hist > 0
+    chi_sq = np.sum(((hist[mask] - fit_on_new_data[mask])**2) / hist[mask])
+    degrees_of_freedom = len(hist[mask]) - len(popt_saved)
+    reduced_chi_sq = chi_sq / degrees_of_freedom
+
+    print(f"Reduced Chi-Squared: {reduced_chi_sq:.4f}")
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True, 
+                                gridspec_kw={'height_ratios': [3, 1]})
+
+    ax1.hist(new_data['B invariant mass'], bins=200, range=(5175, 5400), 
+            alpha=0.3, label='Experimental Data', color='black')
+    ax1.plot(bin_centers, fit_on_new_data, 'r-', lw=2, 
+            label=f'Simulated Signal (Scale: {scale_factor:.2f})')
+    ax1.set_ylabel("Candidates")
+    ax1.set_title('Overlay of the simulated signal with the experimental data')
+    ax1.legend()
+
+    ax2.errorbar(bin_centers, residuals, yerr=np.sqrt(hist), fmt='ko', markersize=2)
+    ax2.axhline(0, color='red', linestyle='--')
+    ax2.set_ylabel("Data - Model")
+    ax2.set_xlabel(r'B candidate mass / MeV/$c^2$')
+    ax2.set_title('Residuals between the two datasets')
+
+    plt.tight_layout()
+    plt.show()
+
+    return residuals, reduced_chi_sq
+
 #%% should not be used in main code
 def __load_data():
     with open(f'data/cleaned_data_{config.dataset}.pkl', 'rb') as infile:
@@ -173,19 +287,8 @@ def __load_data():
     return data
 
 if __name__ == "__main__":
-    yields = []
-    yields_errors = []
-    cleaned_data = __load_data()
-    binned_data = bin_data(cleaned_data, n_bins=5)
-
-    for n, data_bin in enumerate(binned_data):
-        cleaned_df, sig_count_val, err = background_fit_cleaning(data_bin)
-        final_val = float(sig_count_val)
-
-        yields.append(final_val)
-        yields_errors.append(err)
-
-    print("Yields:", yields)
-    print("Minos Errors:", yields_errors)
+    test_data = __load_data()
+    signal, _, _ = clean_signal(test_data, plotting=True)
+    overlay_and_calculate_residuals(signal)
 
 # %%
