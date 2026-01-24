@@ -21,7 +21,7 @@ def bin_data(data, n_bins, plot=False):
         colors = plt.cm.viridis(np.linspace(0, 1, len(binned_data)))
         plot_data = [df['dimuon-system invariant mass'] for df in binned_data]
 
-        plt.hist(plot_data, bins=50, stacked=True, color=colors,
+        plt.hist(plot_data, bins=100, stacked=True, color=colors,
                  label=labels, edgecolor='black', alpha=0.7)
 
         plt.xlabel('Dimuon Mass [GeV/$c^2$]')

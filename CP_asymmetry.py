@@ -331,6 +331,8 @@ def detector_asymmetry():
 
 if __name__ == "__main__":
     signal_data = __load_signal_data()
-    # cal_asy, mass_bins = asymmetry_calibrated(signal_data, n_bins=10, plot=True)
-    acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-        signal_data, n_bins=4, plot=True)
+1    # cal_asy, mass_bins = asymmetry_calibrated(
+#     signal_data, n_bins=10, plot=True)
+
+acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
+    signal_data, n_bins=1, plot=True)
