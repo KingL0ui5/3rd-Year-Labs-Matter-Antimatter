@@ -11,7 +11,8 @@ import config
 def bin_data(data, n_bins, plot=False):
     sorted_data = data.sort_values(
         'dimuon-system invariant mass', axis=0, ascending=True, ignore_index=True)
-    binned_data = np.array_split(sorted_data, n_bins)
+    split_indices = np.array_split(sorted_data.index, n_bins)
+    binned_data = [sorted_data.loc[idx] for idx in split_indices]
 
     if plot:
         plt.figure(figsize=(10, 6))
@@ -62,12 +63,12 @@ def B_counts(data, n_bins, plot=False):
     tuple
         An array containing the counts of B+ and B- mesons for each bin [(count_B_plus, count_B_minus)].
     """
-    # B_plus, B_minus = split_Bs(data)
-    # binned_B_plus = bin_data(B_plus, n_bins=n_bins, plot=plot)
-    # binned_B_minus = bin_data(B_minus, n_bins=n_bins, plot=plot)
+    B_plus, B_minus = split_Bs(data)
+    binned_B_plus = bin_data(B_plus, n_bins=n_bins, plot=plot)
+    binned_B_minus = bin_data(B_minus, n_bins=n_bins, plot=plot)
 
-    binned_data = bin_data(data, n_bins=n_bins, plot=plot)
-    binned_B_plus, binned_B_minus = split_Bs(binned_data)
+    # binned_data = bin_data(data, n_bins=n_bins, plot=plot)
+    # binned_B_plus, binned_B_minus = split_Bs(binned_data)
 
     bin_edges = np.linspace(min(data['dimuon-system invariant mass']),
                             max(data['dimuon-system invariant mass']),
