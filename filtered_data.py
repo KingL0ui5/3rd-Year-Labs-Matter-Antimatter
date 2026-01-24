@@ -99,11 +99,10 @@ class seperate:
             raise ValueError(
                 "dataset must be either '2011' or '2012'")
 
-        is_signal = (
-            dataset['dimuon-system invariant mass'].between(3070, 3200))
+        # is_signal = (dataset['dimuon-system invariant mass'].between(3070, 3200)
+        #              ) | dataset['dimuon-system invariant mass'].between(3600, 3750)
 
-        # |
-        # dataset['dimuon-system invariant mass'].between(3600, 3750))
+        is_signal = dataset['dimuon-system invariant mass'].between(3600, 3750)
 
         is_background = (dataset['B invariant mass'] > 5400)
 
@@ -128,10 +127,10 @@ class seperate:
         dataset.loc[is_background, 'label'] = 0
         dataset = dataset[dataset['label'] != -1].reset_index(drop=True)
 
-        # samesign = load_samesign()
-        # samesign['label'] = 0  # all background
-        # dataset = pd.concat([dataset, samesign],
-        #                     ignore_index=True)
+        samesign = load_samesign()
+        samesign['label'] = 0  # all background
+        dataset = pd.concat([dataset, samesign],
+                            ignore_index=True)
 
         if k is not None:
             data_shuffled = dataset.sample(
