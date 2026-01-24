@@ -68,9 +68,11 @@ def load_2011_data():
     with open('datasets/dataset_2011.pkl', 'rb') as infile:
         dataset_2011 = pickle.load(infile)
 
-    return dataset_2011
+    # print('\n'.join(dataset_2011.keys()))
+    # print(list(dataset_2011['Magnet polarity'].unique()))
 
-    # print('\n'.join(dataset.keys()))
+    dataset_2011 = dataset_2011[dataset_2011['Magnet polarity'] == 1]
+    return dataset_2011
 
 
 class seperate:
@@ -253,4 +255,4 @@ def __task2():
 
 
 if __name__ == "__main__":
-    load_samesign()
+    load_2011_data()
