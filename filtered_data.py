@@ -128,10 +128,10 @@ class seperate:
         dataset.loc[is_background, 'label'] = 0
         dataset = dataset[dataset['label'] != -1].reset_index(drop=True)
 
-        samesign = load_samesign()
-        samesign['label'] = 0  # all background
-        dataset = pd.concat([dataset, samesign],
-                            ignore_index=True)
+        # samesign = load_samesign()
+        # samesign['label'] = 0  # all background
+        # dataset = pd.concat([dataset, samesign],
+        #                     ignore_index=True)
 
         if k is not None:
             data_shuffled = dataset.sample(
