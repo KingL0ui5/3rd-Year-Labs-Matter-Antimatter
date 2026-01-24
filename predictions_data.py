@@ -14,8 +14,7 @@ import pickle
 import config
 import glob
 sns.set_style('darkgrid')
-sns.set_context('paper')
-
+sns.set_context('talk')
 
 # def __load_sim_data():
 #     """

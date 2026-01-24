@@ -10,7 +10,7 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy.signal import find_peaks
 sns.set_style('darkgrid')
-sns.set_context('paper')
+sns.set_context('talk')
 sns.set_palette("colorblind")
 
 
@@ -69,9 +69,10 @@ def load_2011_data():
         dataset_2011 = pickle.load(infile)
 
     # print('\n'.join(dataset_2011.keys()))
-    # print(list(dataset_2011['Magnet polarity'].unique()))
 
     dataset_2011 = dataset_2011[dataset_2011['Magnet polarity'] == 1]
+
+    # print(list(dataset_2011['Magnet polarity'].unique()))
     return dataset_2011
 
 
@@ -101,27 +102,72 @@ class seperate:
             raise ValueError(
                 "dataset must be either '2011' or '2012'")
 
-        is_signal = (dataset['dimuon-system invariant mass'].between(3070, 3200)
+        is_signal = (dataset['dimuon-system invariant mass'].between(2950, 3200)
                      ) | dataset['dimuon-system invariant mass'].between(3600, 3750)
 
         # is_signal = dataset['dimuon-system invariant mass'].between(3070, 3200)
 
-        is_background = (dataset['B invariant mass'] > 5400)
+        is_background = (dataset['B invariant mass'] > 5370)
 
         #  not used unless k=1
         signal = dataset[is_signal]
         background = dataset[is_background]
 
         if plot is True:
-            hist = plt.hist(signal['dimuon-system invariant mass'], bins=50)
-            plt.xlabel(r'B candidate mass / MeV/$c^2$')
-            plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
-            plt.show()
+            fig, ax = plt.subplots(2, 1, figsize=(10, 6))
+            col_name = 'dimuon-system invariant mass'
+            x_min = dataset[col_name].min()
+            x_max = dataset[col_name].max()
+            common_bins = np.linspace(x_min, x_max, 150)
 
-            hist = plt.hist(background['B invariant mass'], bins=100)
+            ax[0].hist(dataset[col_name],
+                       bins=common_bins,
+                       color='lightgray',
+                       label='Total Dataset',
+                       edgecolor='black')
 
-            plt.xlabel(r'B candidate mass / MeV/$c^2$')
-            plt.ylabel(r'Candidates / (23 MeV/$c^2)$')
+            ax[0].hist(signal[col_name],
+                       bins=common_bins,
+                       color='tab:blue',       # distinct color for signal
+                       alpha=0.8,              # high opacity to make it pop
+                       label='Signal',
+                       edgecolor='black',
+                       linewidth=0.5)
+
+            ax[0].set_xlabel(
+                r'$q^2$ / MeV/$c^2$', fontsize=14)
+            # Dynamically update the label with the correct width
+            ax[0].set_ylabel(
+                f'log(Count)', fontsize=14)
+            ax[0].set_title(
+                'Signal and Background selection', fontsize=16)
+            ax[0].legend(fontsize=12, loc='upper right')
+            ax[0].set_yscale('log')
+
+            x_min = dataset['B invariant mass'].min()
+            x_max = dataset['B invariant mass'].max()
+            common_bins = np.linspace(x_min, x_max, 150)
+
+            # 2. Plot the Full Dataset first (in the background, lighter color)
+            ax[1].hist(dataset['B invariant mass'],
+                       bins=common_bins,
+                       color='lightgray',      # Neutral color
+                       label='Total Dataset',
+                       edgecolor='black')       # No edges for cleaner look
+
+            # 3. Plot the Background Data on top (Highlighted)
+            ax[1].hist(background['B invariant mass'],
+                       bins=common_bins,
+                       color='tab:red',        # Bright color to highlight
+                       alpha=0.7,              # Slight transparency
+                       label='Background',
+                       edgecolor='black',      # Add edge to pop out
+                       linewidth=0.5)
+
+            ax[1].legend(fontsize=12, loc='upper right')
+            ax[1].set_yscale('log')
+            ax[1].set_xlabel(r'B candidate mass / MeV/$c^2$')
+            ax[1].set_ylabel(r'log(Count)')
             plt.show()
 
         dataset['label'] = -1
@@ -255,4 +301,4 @@ def __task2():
 
 
 if __name__ == "__main__":
-    load_2011_data()
+    seperate = seperate(k=5, plot=True, dataset='2011')
