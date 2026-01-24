@@ -99,8 +99,11 @@ class seperate:
             raise ValueError(
                 "dataset must be either '2011' or '2012'")
 
-        is_signal = (dataset['dimuon-system invariant mass'].between(3070, 3200) |
-                     dataset['dimuon-system invariant mass'].between(3600, 3750))
+        is_signal = (
+            dataset['dimuon-system invariant mass'].between(3070, 3200))
+
+        # |
+        # dataset['dimuon-system invariant mass'].between(3600, 3750))
 
         is_background = (dataset['B invariant mass'] > 5400)
 

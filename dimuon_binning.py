@@ -9,25 +9,49 @@ import config
 
 
 def bin_data(data, n_bins, plot=False):
-    sorted_data = data.sort_values(
-        'dimuon-system invariant mass', axis=0, ascending=True, ignore_index=True)
-    split_indices = np.array_split(sorted_data.index, n_bins)
-    binned_data = [sorted_data.loc[idx] for idx in split_indices]
+    """
+    Splits the data into 'n_bins' of equal width across the mass range.
+    """
+    mass_col = 'dimuon-system invariant mass'
+    min_val = data[mass_col].min()
+    max_val = data[mass_col].max()
+
+    edges = np.linspace(min_val, max_val, n_bins + 1)
+    bin_assignments = pd.cut(
+        data[mass_col], bins=edges, labels=False, include_lowest=True)
+    binned_data = []
+    for i in range(n_bins):
+        bin_df = data[bin_assignments == i].copy()
+        binned_data.append(bin_df)
 
     if plot:
-        plt.figure(figsize=(10, 6))
-
-        labels = [f'Bin {i}' for i in range(len(binned_data))]
-        colors = plt.cm.viridis(np.linspace(0, 1, len(binned_data)))
+        plt.figure(figsize=(12, 7))
+        colors = plt.cm.nipy_spectral(np.linspace(0, 0.95, n_bins))
         plot_data = [df['dimuon-system invariant mass'] for df in binned_data]
+        labels = [f'Bin {i}' for i in range(n_bins)]
+        plt.hist(plot_data,
+                 bins=300,
+                 stacked=True,
+                 color=colors,
+                 label=labels,
+                 edgecolor='black',
+                 linewidth=0.5,
+                 alpha=0.8)
+        plt.xlabel(r'Dimuon Mass [MeV/$c^2$]', fontsize=12)
+        plt.ylabel('Events (Log Scale)', fontsize=12)
+        plt.yscale('log')
+        plt.title(
+            f'Data Partitioned into {n_bins} Iso-Statistical Bins', fontsize=14)
 
-        plt.hist(plot_data, bins=100, stacked=True, color=colors,
-                 label=labels, edgecolor='black', alpha=0.7)
+        plt.grid(True, which="both", ls="-", alpha=0.2)
 
-        plt.xlabel('Dimuon Mass [GeV/$c^2$]')
-        plt.ylabel('Events')
-        plt.title(f'Data Split into {len(binned_data)} Bins')
-        plt.legend()
+        if n_bins <= 15:
+            plt.legend(title="Mass Bins", frameon=True, loc='upper right')
+        else:
+            plt.text(0.95, 0.95, f'{n_bins} Bins Defined', transform=plt.gca().transAxes,
+                     ha='right', va='top', bbox=dict(facecolor='white', alpha=0.8))
+
+        plt.tight_layout()
         plt.show()
 
     return binned_data

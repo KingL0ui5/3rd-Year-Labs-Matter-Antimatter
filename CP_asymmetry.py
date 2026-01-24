@@ -102,8 +102,9 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
     Computes binned CP asymmetry, shifts it by the resonance calibration,
     and plots subplots comparing the mass spectrum to corrected asymmetry.
     """
-    delta_A, delta_A_unc = compute_combined_calibration(data, plot=False)
-    counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins)
+    delta_A, delta_A_unc = compute_combined_calibration(data, plot=plot)
+    counts, uncertainties, inv_mass = dimuon_binning.B_counts(
+        data, n_bins, plot=True)
 
     corrected_asy = []
     for bin_counts, bin_unc in zip(counts, uncertainties):
@@ -331,8 +332,8 @@ def detector_asymmetry():
 
 if __name__ == "__main__":
     signal_data = __load_signal_data()
-1    # cal_asy, mass_bins = asymmetry_calibrated(
-#     signal_data, n_bins=10, plot=True)
+    # cal_asy, mass_bins = asymmetry_calibrated(
+    #     signal_data, n_bins=3, plot=False)
 
-acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-    signal_data, n_bins=1, plot=True)
+    acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
+        signal_data, n_bins=3, plot=True)
