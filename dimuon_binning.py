@@ -221,7 +221,7 @@ def plot_zfit_results(data, model, obs):
 
     # 1. Calculate Histogram data for the scatter plot
     counts, bin_edges = np.histogram(
-        data['B invariant mass'], bins=n_bins, range=(lower, upper))
+        data['B invariant mass'], bins=n_bins)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
     # 2. Plot Data as Scatter (with Poisson errors)
