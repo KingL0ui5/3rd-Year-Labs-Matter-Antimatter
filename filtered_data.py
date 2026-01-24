@@ -135,7 +135,7 @@ class seperate:
                        linewidth=0.5)
 
             ax[0].set_xlabel(
-                r'$q^2$ / MeV/$c^2$', fontsize=14)
+                r'Dimuon-system Invariant Mass [MeV/$c^2$]', fontsize=14)
             # Dynamically update the label with the correct width
             ax[0].set_ylabel(
                 f'log(Count)', fontsize=14)
@@ -166,7 +166,7 @@ class seperate:
 
             ax[1].legend(fontsize=12, loc='upper right')
             ax[1].set_yscale('log')
-            ax[1].set_xlabel(r'B candidate mass / MeV/$c^2$')
+            ax[1].set_xlabel(r'B Invariant Mass [MeV/$c^2$]', fontsize=14)
             ax[1].set_ylabel(r'log(Count)')
             plt.show()
 
