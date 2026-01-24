@@ -9,29 +9,24 @@ import config
 
 
 def bin_data(data, n_bins, plot=False):
-    # 1. Sort the data
     sorted_data = data.sort_values(
         'dimuon-system invariant mass', axis=0, ascending=True, ignore_index=True)
+    binned_data = np.array_split(sorted_data, n_bins)
 
-    # 2. SAFE SPLIT: Split the *index* array, not the DataFrame directly
-    # This prevents NumPy from converting your DataFrame into a raw array
-    split_indices = np.array_split(sorted_data.index, n_bins)
-
-    # 3. Use the indices to slice the original sorted DataFrame
-    binned_data = [sorted_data.loc[idx] for idx in split_indices]
-
-    # ... (Your plotting code remains the same) ...
     if plot:
         plt.figure(figsize=(10, 6))
+
         labels = [f'Bin {i}' for i in range(len(binned_data))]
         colors = plt.cm.viridis(np.linspace(0, 1, len(binned_data)))
-        # Note: We use .iloc or direct access now that we know they are DataFrames
         plot_data = [df['dimuon-system invariant mass'] for df in binned_data]
 
         plt.hist(plot_data, bins=50, stacked=True, color=colors,
                  label=labels, edgecolor='black', alpha=0.7)
+
         plt.xlabel('Dimuon Mass [GeV/$c^2$]')
+        plt.ylabel('Events')
         plt.title(f'Data Split into {len(binned_data)} Bins')
+        plt.legend()
         plt.show()
 
     return binned_data
@@ -72,6 +67,7 @@ def B_counts(data, n_bins, plot=False):
     # binned_B_minus = bin_data(B_minus, n_bins=n_bins, plot=plot)
 
     binned_data = bin_data(data, n_bins=n_bins, plot=plot)
+    binned_B_plus, binned_B_minus = split_Bs(binned_data)
 
     bin_edges = np.linspace(min(data['dimuon-system invariant mass']),
                             max(data['dimuon-system invariant mass']),
@@ -82,16 +78,15 @@ def B_counts(data, n_bins, plot=False):
     uncertaintes = []
     bin_vals = []
 
-    for i, bin in enumerate(binned_data):
-        print(f"bin {i}")
-        _, B_plus, B_plus_uncert, B_minus, B_minus_uncert = background_fit_cleaning(
-            bin, plotting=True)
+    for i, (bin_p, bin_m) in enumerate(zip(binned_B_plus, binned_B_minus)):
+        _, B_plus, B_plus_uncertainty = background_fit_cleaning(bin_p)
+        _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
 
         if np.isclose(B_plus, 0, atol=0.01) or np.isclose(B_minus, 0, atol=0.01):
             continue
 
         counts.append((B_plus, B_minus))
-        uncertaintes.append((B_plus_uncert, B_minus_uncert))
+        uncertaintes.append((B_plus_uncertainty, B_minus_uncertainty))
         bin_vals.append(bin_centers[i])
 
     return counts, uncertaintes, np.array(bin_vals)
@@ -123,37 +118,36 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
 
 
 def background_fit_cleaning(data, plotting=True):
-    # 1. Clean and Filter Data
-    # We work on a copy to avoid SettingWithCopy warnings on the original df
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
     data = data[(data['B invariant mass'] >= lower_obs) &
                 (data['B invariant mass'] <= upper_obs)].reset_index(drop=True)
 
-    # Minimum entry check (Critical for fit stability)
-    if data.empty or len(data) < 10:
-        return data, 0.0, 0.0, 0.0, 0.0
+    if data.empty or len(data) < 10:  # Added minimum entry check
+        return data, 0.0, 0.0
 
     # 2. Define Space
     obs = zfit.Space('B invariant mass', limits=(lower_obs, upper_obs))
 
-    # 3. Define Yield Parameters (Unique names to prevent graph collisions)
-    u_id = f"{id(data)}_{np.random.randint(10000)}"
+    # 3. Define Yield Parameters with unique names
+    u_id = f"{id(data)}_{np.random.randint(1000)}"
     sig_yield = zfit.Parameter(
         f'sig_yield_{u_id}', len(data)*0.5, 0, len(data)*1.5)
     bkg_yield = zfit.Parameter(
         f'bkg_yield_{u_id}', len(data)*0.5, 0, len(data)*1.5)
 
-    # 4. Define Signal PDF (Crystal Ball)
+    # 4. Define Signal (Crystal Ball)
+    # CORRECTION: In edge bins, these often need to be fixed to global values.
+    # If the fit is unstable, consider setting floating=False for these.
     mu = zfit.Parameter(f'mu_{u_id}', 5280, 5260, 5300)
-    sigma = zfit.Parameter(f'sigma_{u_id}', 20, 10, 50)
-    alpha = zfit.Parameter(f'alpha_{u_id}', 1.5, 0.1, 5.0)
-    n = zfit.Parameter(f'n_{u_id}', 2, 0.5, 10)
+    sigma = zfit.Parameter(f'sigma_{u_id}', 20, 10, 40)
+    alpha = zfit.Parameter(f'alpha_{u_id}', 1.5, 0.5, 3.0)
+    n = zfit.Parameter(f'n_{u_id}', 2, 1, 5)
 
     signal_pdf = zfit.pdf.CrystalBall(obs=obs, mu=mu, sigma=sigma,
                                       alpha=alpha, n=n, extended=sig_yield)
 
-    # 5. Define Background PDF (Exponential)
+    # 5. Define Background (Exponential)
     lam = zfit.Parameter(f'lam_{u_id}', -0.001, -0.01, 0.001)
     background_pdf = zfit.pdf.Exponential(obs=obs, lam=lam, extended=bkg_yield)
 
@@ -165,40 +159,31 @@ def background_fit_cleaning(data, plotting=True):
     minimizer = zfit.minimize.Minuit()
 
     try:
-        # Run the fit
         result = minimizer.minimize(nll)
-        result.hesse()  # Calculate errors
+        result.hesse()
+        sig_val = float(sig_yield.numpy())
 
-        # 7. Calculate Event Weights
-        # (Probability that an event is Signal vs Background)
-        probs_sig = signal_pdf.ext_pdf(z_data).numpy()
-        probs_tot = model.ext_pdf(z_data).numpy()
-
-        # Add weights to the dataframe (clip to 0-1 for safety)
-        data['event_weight'] = np.clip(probs_sig / (probs_tot + 1e-12), 0, 1)
-
-        # 8. Split and Count
-        # Now we split the dataframe using your helper function
-        # The dataframe now contains the 'event_weight' column
-        B_plus_df, B_minus_df = split_Bs(data)
-
-        # The signal count is the Sum of Weights in each subset
-        n_plus = B_plus_df['event_weight'].sum()
-        n_minus = B_minus_df['event_weight'].sum()
-
-        # The statistical uncertainty is approx. Sqrt(Sum(Weights^2))
-        err_plus = np.sqrt((B_plus_df['event_weight']**2).sum())
-        err_minus = np.sqrt((B_minus_df['event_weight']**2).sum())
-
-        if plotting:
-            plot_zfit_results(data, model, obs)
+        # Capture the actual error from the fit!
+        if sig_yield in result.params:
+            sig_err = result.params[sig_yield].get('error', np.sqrt(sig_val))
+        else:
+            sig_err = np.sqrt(max(sig_val, 1.0))
 
     except Exception as e:
         print(f"Fit failed: {e}")
-        # Return zeros if fit crashes
-        return data, 0.0, 0.0, 0.0, 0.0
+        sig_val = 0.0
+        sig_err = 0.0
 
-    return data, n_plus, err_plus, n_minus, err_minus
+    if plotting:
+        # We only plot if the data isn't empty and the model exists
+        plot_zfit_results(data, model, obs)
+
+    # 8. Calculate Event Weights
+    probs_sig = signal_pdf.ext_pdf(z_data).numpy()
+    probs_tot = model.ext_pdf(z_data).numpy()
+    data['event_weight'] = np.clip(probs_sig / (probs_tot + 1e-10), 0, 1)
+
+    return data, sig_val, sig_err
 
 
 def plot_zfit_results(data, model, obs):
