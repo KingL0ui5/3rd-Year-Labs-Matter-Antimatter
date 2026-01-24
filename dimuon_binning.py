@@ -45,24 +45,24 @@ def B_counts(data, n_bins):
     binned_B_plus = bin_data(B_plus, n_bins=n_bins)
     binned_B_minus = bin_data(B_minus, n_bins=n_bins)
 
-    bin_width = (max(data['dimuon-system invariant mass']) - min(data['dimuon-system invariant mass'])) / n_bins
-
-    boundary_inv_mass = np.linspace(min(data['dimuon-system invariant mass']), max(data['dimuon-system invariant mass']), n_bins)
-
-
+    raw_boundaries = np.linspace(min(data['dimuon-system invariant mass']), 
+                                 max(data['dimuon-system invariant mass']), n_bins)
     counts = []
     uncertaintes = []
+    valid_boundaries = []
+
     for i, (bin_p, bin_m) in enumerate(zip(binned_B_plus, binned_B_minus)):
         _, B_plus, B_plus_uncertainty = background_fit_cleaning(bin_p)
         _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
 
         if np.isclose(B_plus, 0, atol=1) or np.isclose(B_minus, 0, atol=1):
-            boundary_inv_mass = np.delete(boundary_inv_mass,i)
             continue
 
         counts.append((B_plus, B_minus))
         uncertaintes.append((B_plus_uncertainty, B_minus_uncertainty))
-    return counts, uncertaintes, boundary_inv_mass
+        valid_boundaries.append(raw_boundaries[i])
+
+    return counts, uncertaintes, np.array(valid_boundaries)
     
 def crystal_ball(x, x0, sigma, alpha, n, N):
     """
@@ -87,7 +87,7 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
     # Signal + Background
     return crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
 
-def background_fit_cleaning(data, plotting=True):
+def background_fit_cleaning(data, plotting=False):
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
     data = data[(data['B invariant mass'] >= lower_obs) & 
@@ -187,7 +187,7 @@ def plot_zfit_results(data, model, obs):
 
     # Formatting
     plt.yscale('log')
-    plt.ylim(0.5, counts.max() * 5) # Adjusted for log scale visibility
+    plt.ylim(0.1, counts.max() * 5) # Adjusted for log scale visibility
     plt.xlabel(r'B candidate mass [MeV/$c^2$]')
     plt.ylabel(f'Events / ({bin_width:.1f} MeV)')
     plt.legend()

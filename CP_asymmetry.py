@@ -64,10 +64,64 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
 
 # We compute the CP symmetry for the peaks:
 
-# %% Main Execution
+def compute_combined_calibration(data, plot: bool=True):
+    """
+    Concatenates J/psi and psi(2s) data to compute a single 
+    high-precision calibration asymmetry.
+    """
+    # Define resonance windows
+    is_jpsi = (data['dimuon-system invariant mass'] >= 3000) & \
+              (data['dimuon-system invariant mass'] <= 3200)
+    is_psi2s = (data['dimuon-system invariant mass'] >= 3600) & \
+               (data['dimuon-system invariant mass'] <= 3800)
+    
+    combined_peak_data = data[is_jpsi | is_psi2s]
+    
+    # Get the integrated counts for the calibration
+    counts, uncertainties, inv_mass = dimuon_binning.B_counts(combined_peak_data, n_bins=1)
+    
+    # Calculate the calibration values
+    B_plus, B_minus = counts[0]
+    B_p_unc, B_m_unc = uncertainties[0]
+    delta_A, delta_A_unc = compute_b_asymmetry(B_plus, B_minus, B_p_unc, B_m_unc)
 
-def compute_asymmetry(data, plot: bool = False):
-    n_bins = 10
+    if plot:
+        plt.figure(figsize=(10, 6))
+
+        # 1. Histogram on the main Y-axis
+        plt.hist(data['dimuon-system invariant mass'], bins=200, alpha=0.5,
+                 color='gray', log=True, label='Mass Distribution')
+
+        # 2. Define the exact splice points for the vlines
+        splice_points = [3000, 3200, 3600, 3800]
+
+        # Draw the lines at the splice points
+        plt.vlines(splice_points, ymin=0, ymax=10e6, colors='red', 
+                   linestyles='dashed', alpha=0.8, label='Resonance Splicing')
+
+        plt.ylabel('Counts (Log Scale)')
+        plt.xlabel('Dimuon Invariant Mass [MeV]')
+        plt.title('Combined Calibration Yield & Asymmetry')
+        plt.show()
+
+    if len(counts) > 0:
+        B_plus, B_minus = counts[0]
+        B_p_unc, B_m_unc = uncertainties[0]
+
+        # Calculate the single global asymmetry
+        delta_A, delta_A_unc = compute_b_asymmetry(B_plus, B_minus, B_p_unc, B_m_unc)
+
+        print("=== Combined Calibration (J/psi + psi(2S)) ===")
+        print(f"Total Calibration Mesons: {B_plus + B_minus:.0f}")
+        print(f"Measured Detector Bias (delta A): {delta_A:.5f} ± {delta_A_unc:.5f}")
+
+        return delta_A, delta_A_unc
+    else:
+        print("Error: No peak data found.")
+        return 0.0, 0.0
+
+def compute_asymmetry(data, plot: bool = True):
+    n_bins = 15
     counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins)
 
     asy = []
@@ -98,10 +152,14 @@ def compute_asymmetry(data, plot: bool = False):
 
     return asy
 
+#%% Main execution.
+
 if __name__ == "__main__":
     signal_data = __load_signal_data()
-    compute_asymmetry(signal_data, plot=True)
-    
-    mag_up, mag_down = __load_cleaned_mag_data()
-    compute_asymmetry(mag_up, plot=True)
-    compute_asymmetry(mag_down, plot=True)
+    #compute_asymmetry(signal_data, plot=True)
+
+    #mag_up, mag_down = __load_cleaned_mag_data()
+    #compute_asymmetry(mag_up, plot=True)
+    #compute_asymmetry(mag_down, plot=True)
+
+    peak_results = compute_combined_calibration(signal_data)
