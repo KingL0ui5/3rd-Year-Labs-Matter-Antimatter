@@ -226,8 +226,8 @@ def plot_zfit_results(data, model, obs):
 
     # 2. Plot Data as Scatter (with Poisson errors)
     # We use errorbar with fmt='ko' (black circles)
-    plt.plot(bin_centers, counts, fmt='ko', markersize=3,
-             label='Data', capsize=0, elinewidth=1)
+    plt.scatter(bin_centers, counts,
+                label='Data')
 
     # 3. Total Model Curve
     total_yield = model.get_yield().numpy()
