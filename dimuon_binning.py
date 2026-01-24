@@ -45,24 +45,27 @@ def B_counts(data, n_bins):
     binned_B_plus = bin_data(B_plus, n_bins=n_bins)
     binned_B_minus = bin_data(B_minus, n_bins=n_bins)
 
-    raw_boundaries = np.linspace(min(data['dimuon-system invariant mass']), 
-                                 max(data['dimuon-system invariant mass']), n_bins)
+    bin_edges = np.linspace(min(data['dimuon-system invariant mass']), 
+                    max(data['dimuon-system invariant mass']), 
+                    n_bins + 1)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
     counts = []
     uncertaintes = []
-    valid_boundaries = []
+    bin_vals = []
 
     for i, (bin_p, bin_m) in enumerate(zip(binned_B_plus, binned_B_minus)):
         _, B_plus, B_plus_uncertainty = background_fit_cleaning(bin_p)
         _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
 
-        if np.isclose(B_plus, 0, atol=1) or np.isclose(B_minus, 0, atol=1):
+        if np.isclose(B_plus, 0, atol=0.01) or np.isclose(B_minus, 0, atol=0.01):
             continue
 
         counts.append((B_plus, B_minus))
         uncertaintes.append((B_plus_uncertainty, B_minus_uncertainty))
-        valid_boundaries.append(raw_boundaries[i])
+        bin_vals.append(bin_centers[i])
 
-    return counts, uncertaintes, np.array(valid_boundaries)
+    return counts, uncertaintes, np.array(bin_vals)
     
 def crystal_ball(x, x0, sigma, alpha, n, N):
     """
@@ -87,7 +90,7 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
     # Signal + Background
     return crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
 
-def background_fit_cleaning(data, plotting=False):
+def background_fit_cleaning(data, plotting=True):
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
     data = data[(data['B invariant mass'] >= lower_obs) & 
