@@ -313,7 +313,6 @@ def compute_combined_calibration(data, plot: bool = False):
 
 
 # %% Main execution block
-
 def detector_asymmetry():
     """
     Computes the detector asymmetry using magnet polarity reversal data.
