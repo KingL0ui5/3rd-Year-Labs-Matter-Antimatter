@@ -50,8 +50,8 @@ def load_magnet_data():
 
     #  concatinate both datasets with polarity column for easier processing
 
-    magnet_up_data['polarity'] = 1
-    magnet_down_data['polarity'] = 0
+    magnet_up_data['Magnet polarity'] = 1
+    magnet_down_data['Magnet polarity'] = -1
 
     dataset = pd.concat([magnet_up_data, magnet_down_data], ignore_index=True)
 

@@ -11,8 +11,9 @@ import xgboost
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pickle
+import numpy as np
 sns.set_style('darkgrid')
-sns.set_context('paper')
+sns.set_context('talk')
 
 detail = True
 models = []
@@ -60,28 +61,42 @@ for i in range(k):
     #  Evaluate Model
     prediction_k = model_k.predict_proba(x_test_k)
 
-    plt.hist([p[1] for p, cls in zip(prediction_k, y_test_k)
-              if cls == 1], bins=50, label='Signal')
-    plt.hist([p[1] for p, cls in zip(prediction_k, y_test_k)
-              if cls == 0], bins=50, label='Background')
-    plt.xlabel(r'Signal Probability')
-    plt.ylabel(r'Candidates$')
-    plt.yscale('log')
-    plt.legend()
-    plt.show()
-
     if detail:
-        # ROC Curve and Feature Importance
-        background_accepted_k, signal_accepted_k, probabilities_tested_k = roc_curve(
-            y_test_k, prediction_k[:, 1])
-        plt.plot(background_accepted_k, signal_accepted_k, label='ROC curve')
-        plt.plot([0, 1], [0, 1], color='red', linestyle='--', label='Random')
-        plt.title(f'ROC Curve model {i}')
-        plt.xlabel(r'Background Contamination')
-        plt.ylabel(r'Signal Efficiency')
-        plt.legend()
-        plt.show()
+        y_true = np.array(y_test_k)
+        probs = np.array(prediction_k)
+        if probs.ndim == 2:
+            probs = probs[:, 1]
 
+        # Create Figure 1: 1 Row, 2 Columns
+        fig1, axes = plt.subplots(1, 2, figsize=(16, 6))
+
+        # --- Left Plot: Signal vs Background Histogram ---
+        ax_hist = axes[0]
+        ax_hist.hist(probs[y_true == 1], bins=50, label='Signal', alpha=0.6)
+        ax_hist.hist(probs[y_true == 0], bins=50,
+                     label='Background', alpha=0.6)
+
+        ax_hist.set_title(f'Signal vs Background (Model {i})')
+        ax_hist.set_xlabel('Signal Probability')
+        ax_hist.set_ylabel('log(Candidates)')
+        ax_hist.set_yscale('log')
+        ax_hist.legend()
+
+        # --- Right Plot: ROC Curve ---
+        ax_roc = axes[1]
+        fpr, tpr, _ = roc_curve(y_true, probs)
+
+        ax_roc.plot(fpr, tpr, label='ROC curve', linewidth=2)
+        ax_roc.plot([0, 1], [0, 1], 'r--', label='Random')
+
+        ax_roc.set_title(f'ROC Curve (Model {i})')
+        ax_roc.set_xlabel('Background Contamination')
+        ax_roc.set_ylabel('Signal Efficiency')
+        ax_roc.legend()
+        ax_roc.grid(True, alpha=0.3)
+
+        plt.tight_layout()
+        plt.show()
         importance = model_k.get_booster().get_score(importance_type='gain')
 
         df = pd.DataFrame(list(importance.items()),

@@ -38,8 +38,8 @@ def __load_cleaned_mag_data():
     with open('data/cleaned_data_2012.pkl', 'rb') as f:
         cleaned_data = pickle.load(f)
 
-    mag_up = cleaned_data[cleaned_data['polarity'] == 1]
-    mag_down = cleaned_data[cleaned_data['polarity'] == 0]
+    mag_up = cleaned_data[cleaned_data['Magnet polarity'] == 1]
+    mag_down = cleaned_data[cleaned_data['Magnet polarity'] == -1]
     return mag_up, mag_down
 
 
