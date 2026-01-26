@@ -9,6 +9,7 @@ import pickle
 from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy.signal import find_peaks
+from sklearn.model_selection import StratifiedKFold
 sns.set_style('darkgrid')
 sns.set_context('talk')
 sns.set_palette("colorblind")
@@ -210,24 +211,22 @@ class seperate:
                             ignore_index=True)
 
         if k is not None:
-            # 1. Shuffle and split the data into k equal-sized chunks
-            data_shuffled = dataset.sample(
-                frac=1, random_state=42).reset_index(drop=True)
-            full_parts = np.array_split(data_shuffled, k)
+            skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
 
             self.__splits = []
             self.__signal_parts = []
             self.__background_parts = []
 
-            for i in range(k):
-                evaluation_fold = full_parts[i]
-                training_parts = [full_parts[j] for j in range(k) if j != i]
-                training_set = pd.concat(training_parts)
+            for _, (train_idx, eval_idx) in enumerate(
+                    skf.split(dataset, dataset['label'])):
+
+                evaluation_fold = dataset.iloc[eval_idx]
+                training_set = dataset.iloc[train_idx]
 
                 sig_train = training_set[training_set['label'] == 1].drop(columns=[
-                                                                          'label'])
+                    'label'])
                 bkg_train = training_set[training_set['label'] == 0].drop(columns=[
-                                                                          'label'])
+                    'label'])
 
                 self.__signal_parts.append(sig_train)
                 self.__background_parts.append(bkg_train)

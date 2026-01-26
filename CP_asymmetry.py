@@ -10,7 +10,7 @@ import filtered_data
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_style('darkgrid')
-sns.set_context('paper')
+sns.set_context('talk')
 
 
 # %% Data Loading Functions
@@ -190,7 +190,7 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     Slices peaks out first, bins the remainder, and handles fit failures.
     Plots the spliced mass spectrum and the resulting CP asymmetry.
     """
-    is_jpsi = (data['dimuon-system invariant mass'] >= 3000) & \
+    is_jpsi = (data['dimuon-system invariant mass'] >= 2900) & \
               (data['dimuon-system invariant mass'] <= 3200)
     is_psi2s = (data['dimuon-system invariant mass'] >= 3600) & \
                (data['dimuon-system invariant mass'] <= 3800)
@@ -296,7 +296,7 @@ def compute_combined_calibration(data, plot: bool = False):
     high-precision calibration asymmetry.
     """
     # Define resonance windows
-    is_jpsi = (data['dimuon-system invariant mass'] >= 3000) & \
+    is_jpsi = (data['dimuon-system invariant mass'] >= 2900) & \
               (data['dimuon-system invariant mass'] <= 3200)
     is_psi2s = (data['dimuon-system invariant mass'] >= 3600) & \
                (data['dimuon-system invariant mass'] <= 3800)
@@ -317,7 +317,7 @@ def compute_combined_calibration(data, plot: bool = False):
         plt.figure(figsize=(10, 6))
         plt.hist(data['dimuon-system invariant mass'], bins=200, alpha=0.5,
                  color='gray', log=True, label='Mass Distribution')
-        splice_points = [3000, 3200, 3600, 3800]
+        splice_points = [2900, 3200, 3600, 3800]
         plt.vlines(splice_points, ymin=0, ymax=10e6, colors='red',
                    linestyles='dashed', alpha=0.8, label='Resonance Splicing')
 
