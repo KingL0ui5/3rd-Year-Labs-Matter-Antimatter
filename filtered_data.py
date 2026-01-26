@@ -81,7 +81,7 @@ def load_2011_data():
     with open('datasets/dataset_2011.pkl', 'rb') as infile:
         dataset_2011 = pickle.load(infile)
 
-    print('\n'.join(dataset_2011.keys()))
+    # print('\n'.join(dataset_2011.keys()))
 
     dataset_2011 = dataset_2011[dataset_2011['Magnet polarity'] == 1]
 

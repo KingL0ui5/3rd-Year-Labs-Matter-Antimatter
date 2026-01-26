@@ -94,7 +94,8 @@ class BDT_Analysis:
             data['signal_probability'], signal_range=(0.6, 1.0))
         optimal_cutoff = 0.6
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
-        classified_data = self.__determine_signal(data, optimal_cutoff)
+        classified_data = self.__determine_signal(
+            data, optimal_cutoff, 0.3, 0.3)
 
         # We histogram the final classified data
         if hist:
@@ -113,20 +114,40 @@ class BDT_Analysis:
     #  - - - - - - - - - - - - - - - - - - - - - - - - - signal cutoff methods - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
     @staticmethod
-    def __determine_signal(data, threshold):
+    def __determine_signal(data, bdt_threshold, kaon_pid_threshold=0.2, muon_pid_threshold=0.2):
         """
-        Determine signal events based on a probability threshold.
-        Assigns 1 if it is signal, and 0 if it is background in the new 'signal column'
+        Determine signal events based on BDT probability AND Particle Identification (PID) cuts.
+        Assigns 1 if it is signal (passes all cuts), and 0 if it is background.
 
         Parameters
         ----------
         data: pd.DataFrame
-            DataFrame containing 'signal_probability' column.
-        threshold: float
-            Probability threshold to classify signal events.
+            DataFrame containing 'signal_probability' and PID columns.
+        bdt_threshold: float
+            Probability threshold for the BDT score.
+        kaon_pid_threshold: float
+            Minimum required probability for the Kaon hypothesis (ProbNNk).
+        muon_pid_threshold: float
+            Minimum required probability for the Muon hypothesis (ProbNNmu).
         """
-        data['signal'] = (data['signal_probability'] >= threshold).astype(int)
+        pass_bdt = data['signal_probability'] >= bdt_threshold
+
+        pass_kaon_pid = data['Kaon PID NN score for kaon hypothesis'] > kaon_pid_threshold
+
+        pass_muon_pid = (
+            (data['Same-sign muon PID NN score for muon hypothesis'] > muon_pid_threshold) &
+            (data['Opposite-sign muon PID NN score for muon hypothesis']
+             > muon_pid_threshold)
+        )
+
+        pass_kaon_veto = data['Kaon PID muon system flag'] == 0
+
+        is_signal = pass_bdt & pass_kaon_pid & pass_muon_pid & pass_kaon_veto
+
+        data['signal'] = is_signal.astype(int)
+
         data.drop(columns=['signal_probability'], inplace=True)
+
         return data
 
     @staticmethod
