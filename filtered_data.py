@@ -14,6 +14,17 @@ sns.set_context('talk')
 sns.set_palette("colorblind")
 
 
+def load_simulation_data():
+    """
+    Load pure signal simulation dataset.
+    """
+
+    with open('datasets/rapidsim_Kmumu.pkl', 'rb') as infile:
+        simulation_data = pickle.load(infile)
+
+    return simulation_data
+
+
 def load_samesign():
     """
     Load the full 2011 dataset.

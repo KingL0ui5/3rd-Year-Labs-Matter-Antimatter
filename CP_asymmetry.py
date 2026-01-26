@@ -6,6 +6,7 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 import pickle
 import math
 import dimuon_binning
+import filtered_data
 import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set_style('darkgrid')
@@ -330,9 +331,10 @@ def detector_asymmetry():
 
 
 if __name__ == "__main__":
-    signal_data = __load_signal_data()
+    pure_signal = filtered_data.load_simulation_data()
+    # signal_data = __load_signal_data()
     # cal_asy, mass_bins = asymmetry_calibrated(
     #     signal_data, n_bins=3, plot=False)
 
     acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-        signal_data, n_bins=3, plot=True)
+        pure_signal, n_bins=3, plot=True)
