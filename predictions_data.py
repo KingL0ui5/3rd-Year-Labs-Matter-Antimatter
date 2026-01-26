@@ -92,12 +92,11 @@ class BDT_Analysis:
 
         optimal_cutoff = self.__find_optimal_cutoff(
             data['signal_probability'], signal_range=(0.6, 1.0))
-        optimal_cutoff = 0.6
+        optimal_cutoff = 0.9
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
         classified_data = self.__determine_signal(
-            data, optimal_cutoff, 0.3, 0.3)
+            data, optimal_cutoff, 0.5, 0.5)
 
-        # We histogram the final classified data
         if hist:
             plt.hist(classified_data[classified_data['signal'] == 1][feature],
                      bins=100, alpha=0.5, label='Classified Signal')

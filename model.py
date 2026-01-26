@@ -25,6 +25,8 @@ seperation = filtered_data.seperate(k=k, dataset=dataset)
 
 sig, bkg = seperation.data(drop_cols=config.drop_cols)
 
+print('\n'.join(sig[0].keys()))
+
 #  save the filtered object
 with open(f'data/filtered_data_{dataset}.pkl', 'wb') as f:
     pickle.dump(seperation, f)
