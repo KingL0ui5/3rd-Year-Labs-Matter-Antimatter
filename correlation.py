@@ -88,7 +88,7 @@ def calculate_all_correlations(target, data, sample_size=10000):
 
 if __name__ == "__main__":
     # Load full dataset
-    data = pd.read_pickle('data/dataset_2011.pkl')
+    data = pd.read_pickle('datasets/dataset_2011.pkl')
 
     # Run calculation on sample
     correlations_B = calculate_all_correlations('B invariant mass', data)

@@ -92,7 +92,7 @@ class BDT_Analysis:
 
         optimal_cutoff = self.__find_optimal_cutoff(
             data['signal_probability'], signal_range=(0.6, 1.0))
-        # optimal_cutoff = 0.6
+        optimal_cutoff = 0.6
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
         classified_data = self.__determine_signal(data, optimal_cutoff)
 

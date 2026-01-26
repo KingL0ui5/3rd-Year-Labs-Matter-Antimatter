@@ -26,6 +26,20 @@ def __load_signal_data():
     with open('data/cleaned_data_2011.pkl', 'rb') as f:
         cleaned_data = pickle.load(f)
 
+        raw_data = filtered_data.load_2011_data()
+
+        fig, ax = plt.subplots(figsize=(10, 6))
+        cleaned_data.hist('dimuon-system invariant mass', bins=200, ax=ax)
+        raw_data.hist('dimuon-system invariant mass',
+                      bins=200, alpha=0.5, ax=ax)
+        plt.legend(['Cleaned Signal Data', 'Raw Data'])
+        ax.set_yscale('log')
+        ax.set_title(
+            'Dimuon Invariant Mass Distribution: Raw vs Cleaned Signal Data')
+        ax.set_ylabel('Counts (Log Scale)')
+        ax.set_xlabel('Dimuon Invariant Mass [MeV]')
+        plt.show()
+
     return cleaned_data
 
 
@@ -331,10 +345,10 @@ def detector_asymmetry():
 
 
 if __name__ == "__main__":
-    pure_signal = filtered_data.load_simulation_data()
-    # signal_data = __load_signal_data()
+    # pure_signal = filtered_data.load_simulation_data()
+    signal_data = __load_signal_data()
     # cal_asy, mass_bins = asymmetry_calibrated(
     #     signal_data, n_bins=3, plot=False)
 
     acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-        pure_signal, n_bins=3, plot=True)
+        signal_data, n_bins=1, plot=True)

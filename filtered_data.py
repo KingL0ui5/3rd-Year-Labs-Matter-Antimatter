@@ -22,6 +22,7 @@ def load_simulation_data():
     with open('datasets/rapidsim_Kmumu.pkl', 'rb') as infile:
         simulation_data = pickle.load(infile)
 
+    # print('\n'.join(simulation_data.keys()))
     return simulation_data
 
 
@@ -83,7 +84,6 @@ def load_2011_data():
 
     dataset_2011 = dataset_2011[dataset_2011['Magnet polarity'] == 1]
 
-    # print(list(dataset_2011['Magnet polarity'].unique()))
     return dataset_2011
 
 
@@ -109,15 +109,20 @@ class seperate:
         elif dataset == '2012':
             dataset = load_magnet_data()
 
+        # elif dataset == 'simulation':
+        #     dataset = load_simulation_data()
+
         else:
             raise ValueError(
                 "dataset must be either '2011' or '2012'")
 
+        #  signal selection criteria
         is_signal = (dataset['dimuon-system invariant mass'].between(2950, 3200)
                      ) | dataset['dimuon-system invariant mass'].between(3600, 3750)
 
         # is_signal = dataset['dimuon-system invariant mass'].between(3070, 3200)
 
+        #  background selection criteria
         is_background = (dataset['B invariant mass'] > 5370)
 
         #  not used unless k=1
@@ -181,6 +186,19 @@ class seperate:
             ax[1].set_ylabel(r'log(Count)')
             plt.show()
 
+            background.hist(column='dimuon-system invariant mass', bins=100)
+            plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
+            plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+            plt.title("Background Dataset")
+            plt.yscale('log')
+            plt.show()
+            signal.hist(column='B invariant mass', bins=100)
+            plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
+            plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+            plt.title("Signal Dataset")
+            plt.yscale('log')
+            plt.show()
+
         dataset['label'] = -1
         dataset.loc[is_signal, 'label'] = 1
         dataset.loc[is_background, 'label'] = 0
@@ -192,6 +210,7 @@ class seperate:
                             ignore_index=True)
 
         if k is not None:
+            # 1. Shuffle and split the data into k equal-sized chunks
             data_shuffled = dataset.sample(
                 frac=1, random_state=42).reset_index(drop=True)
             full_parts = np.array_split(data_shuffled, k)
@@ -201,18 +220,22 @@ class seperate:
             self.__background_parts = []
 
             for i in range(k):
-                current_fold = full_parts[i]
+                evaluation_fold = full_parts[i]
+                training_parts = [full_parts[j] for j in range(k) if j != i]
+                training_set = pd.concat(training_parts)
 
-                sig_k = current_fold[current_fold['label'] == 1]
-                bkg_k = current_fold[current_fold['label'] == 0]
-                sig_k = sig_k.drop(columns=['label'])
-                bkg_k = bkg_k.drop(columns=['label'])
-                current_fold = current_fold.drop(columns=['label'])
-                self.__signal_parts.append(sig_k)
-                self.__background_parts.append(bkg_k)
-                self.__splits.append(current_fold)
+                sig_train = training_set[training_set['label'] == 1].drop(columns=[
+                                                                          'label'])
+                bkg_train = training_set[training_set['label'] == 0].drop(columns=[
+                                                                          'label'])
 
-        if k is None:
+                self.__signal_parts.append(sig_train)
+                self.__background_parts.append(bkg_train)
+
+                self.__splits.append(evaluation_fold.drop(columns=['label']))
+
+        elif k is None:
+            # Standard logic for no folding
             self.__signal_parts = signal
             self.__background_parts = background
 
