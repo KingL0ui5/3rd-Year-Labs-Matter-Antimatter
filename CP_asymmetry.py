@@ -28,18 +28,26 @@ def __load_signal_data():
 
         raw_data = filtered_data.load_2011_data()
 
-        fig, ax = plt.subplots(figsize=(10, 6))
-        cleaned_data.hist('dimuon-system invariant mass', bins=200, ax=ax)
+        fig, ax = plt.subplots(2, 1, figsize=(10, 6))
+        cleaned_data.hist('dimuon-system invariant mass', bins=200, ax=ax[0])
         raw_data.hist('dimuon-system invariant mass',
-                      bins=200, alpha=0.5, ax=ax)
+                      bins=200, alpha=0.5, ax=ax[0])
         plt.legend(['Cleaned Signal Data', 'Raw Data'])
-        ax.set_yscale('log')
-        ax.set_title(
+        ax[0].set_yscale('log')
+        ax[0].set_title(
             'Dimuon Invariant Mass Distribution: Raw vs Cleaned Signal Data')
-        ax.set_ylabel('Counts (Log Scale)')
-        ax.set_xlabel('Dimuon Invariant Mass [MeV]')
-        plt.show()
+        ax[0].set_ylabel('Counts (Log Scale)')
+        ax[0].set_xlabel('Dimuon Invariant Mass [MeV]')
 
+        cleaned_data.hist('B invariant mass', bins=200, ax=ax[1])
+        raw_data.hist('B invariant mass', bins=200, alpha=0.5, ax=ax[1])
+        plt.legend(['Cleaned Signal Data', 'Raw Data'])
+        ax[1].set_yscale('log')
+        ax[1].set_title(
+            'B Invariant Mass Distribution: Raw vs Cleaned Signal Data')
+        ax[1].set_ylabel('Counts (Log Scale)')
+        ax[1].set_xlabel('B Invariant Mass [MeV]')
+        plt.show()
     return cleaned_data
 
 
