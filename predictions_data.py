@@ -16,27 +16,13 @@ import config
 import glob
 sns.set_style('darkgrid')
 sns.set_context('talk')
-
-# def __load_sim_data():
-#     """
-#     Load the rapidsim dataset for Kmumu.
-#     Returns:
-#     data : pd.DataFrame
-#         The rapidsim Kmumu dataset.
-#     """
-#     with open('datasets/rapidsim_Kmumu.pkl', 'rb') as infile:
-#         data = pickle.load(infile)
-
-#     data.hist(column='B invariant mass', bins=500)
-#     plt.xlim(5100, 5500)
-#     return data
-
+dataset = config.dataset
 
 # %% prediction class
 
 
 class BDT_Analysis:
-    def __init__(self, dataset=config.dataset, plot: bool = False):
+    def __init__(self, plot: bool = False):
         k = config.k
         with open(f'data/filtered_data_{dataset}.pkl', 'rb') as f:
             self._seperation = pickle.load(f)
@@ -49,7 +35,6 @@ class BDT_Analysis:
                 models[model_k] = model
 
         self._models = models
-        self._dataset_name = dataset
 
         data = self.__classify_data(hist=plot)
         self._cleaned_data = data
@@ -195,7 +180,7 @@ class BDT_Analysis:
             data = override
         else:
             data = self._cleaned_data
-        filename = f'data/cleaned_data_{self._dataset_name}.pkl'
+        filename = f'data/cleaned_data_{dataset}.pkl'
         data.to_pickle(filename)
         print(f'Cleaned data saved to {filename}')
 

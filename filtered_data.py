@@ -10,6 +10,8 @@ from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy.signal import find_peaks
 from sklearn.model_selection import StratifiedKFold, KFold
+
+import config
 sns.set_style('darkgrid')
 sns.set_context('talk')
 sns.set_palette("colorblind")
@@ -46,50 +48,39 @@ def load_samesign():
     return samesign
 
 
-def load_magnet_data():
+def load_dataset(dataset: str = 'up'):
     """
-    Load the 2012 datasets for Magnet Up and Magnet Down.
-    Returns:
-    magnet_up_data : pd.DataFrame
-        The dataset for Magnet Up.
-    magnet_down_data : pd.DataFrame
-        The dataset for Magnet Down.
-    """
-    with open('datasets/dataset_2012_MagnetUp.pkl', 'rb') as infile:
-        magnet_up_data = pickle.load(infile)
-
-    with open('datasets/dataset_2012_MagnetDown.pkl', 'rb') as infile:
-        magnet_down_data = pickle.load(infile)
-
-    #  concatinate both datasets with polarity column for easier processing
-
-    magnet_up_data['Magnet polarity'] = 1
-    magnet_down_data['Magnet polarity'] = -1
-
-    dataset = pd.concat([magnet_up_data, magnet_down_data], ignore_index=True)
-
-    return dataset
-
-
-def load_2011_data():
-    """
-    Load the full 2011 dataset.
-    Returns:
-    data_2011 : pd.DataFrame
-        The full 2011 dataset.
+    Load 2011 and 2012 magnet down data
+    returns: 
+    data : pd.DataFrame
+        The combined 2011 and 2012 magnet down dataset.
     """
     with open('datasets/dataset_2011.pkl', 'rb') as infile:
         dataset_2011 = pickle.load(infile)
 
-    # print('\n'.join(dataset_2011.keys()))
+    if dataset == 'down':
+        with open('datasets/dataset_2012_MagnetDown.pkl', 'rb') as infile:
+            dataset_2012_down = pickle.load(infile)
 
-    dataset_2011 = dataset_2011[dataset_2011['Magnet polarity'] == 1]
+        dataset_2011_down = dataset_2011[dataset_2011['Magnet polarity'] == -1]
+        all_data = pd.concat(
+            [dataset_2011_down, dataset_2012_down], ignore_index=True)
 
-    return dataset_2011
+    elif dataset == 'up':
+        with open('datasets/dataset_2012_MagnetUp.pkl', 'rb') as infile:
+            dataset_2012_up = pickle.load(infile)
+
+        dataset_2011_up = dataset_2011[dataset_2011['Magnet polarity'] == 1]
+
+        all_data = pd.concat(
+            [dataset_2011_up, dataset_2012_up], ignore_index=True)
+
+    # print('\n'.join(all_data.keys()))
+    return all_data
 
 
 class seperate:
-    def __init__(self, k: int = None, plot: bool = False, dataset: str = '2011'):
+    def __init__(self, k: int = None, plot: bool = False, dataset: str = 'up'):
         """
         Separate the 2011 dataset into signal and background based on B invariant mass.
         Parameters
@@ -103,19 +94,7 @@ class seperate:
         # dataset = drop_correlated('B invariant mass', _dataset, threshold=0.5)
         self.__splits = []
 
-        self.__dataset = dataset
-        if dataset == '2011':
-            dataset = load_2011_data()
-
-        elif dataset == '2012':
-            dataset = load_magnet_data()
-
-        # elif dataset == 'simulation':
-        #     dataset = load_simulation_data()
-
-        else:
-            raise ValueError(
-                "dataset must be either '2011' or '2012'")
+        dataset = load_dataset(dataset=dataset)
 
         #  signal selection criteria
 
@@ -318,13 +297,10 @@ class seperate:
             return df.drop(columns=drop_cols, errors='ignore')
         return df
 
-    def which_dataset(self):
-        return self.__dataset
-
 
 # %% Initial B invariant mass filtering
 def __task1():
-    dataset = load_2011_data()
+    dataset = load_dataset()
     hist = plt.hist(dataset['B invariant mass'], bins=100)
     peaks = find_peaks(hist[0], height=1e5)[0]
     plt.vlines(dataset['B invariant mass'][peaks], 0, max(hist[0]),
@@ -354,7 +330,7 @@ def __task1():
 
 
 def __task2():
-    dataset = load_2011_data()
+    dataset = load_dataset()
     hist = plt.hist(dataset['dimuon-system invariant mass'], bins=100)
 
     peaks = find_peaks(hist[0], height=1e3, distance=1, prominence=50)[0]
@@ -374,7 +350,7 @@ if __name__ == "__main__":
     seperate = seperate(k=5, plot=True, dataset='2011')
 
     samesign = load_samesign()
-    data = load_2011_data()
+    data = load_dataset(dataset=config.dataset)
     fig, ax = plt.subplots(figsize=(10, 6))
     samesign.hist(column='B invariant mass', bins=100, ax=ax)
     data.hist(column='B invariant mass', bins=100, ax=ax, alpha=0.4)

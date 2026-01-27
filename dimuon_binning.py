@@ -246,7 +246,7 @@ def plot_zfit_results(data, model, obs):
     plt.plot(x_plot, y_bkg, '--', color='tab:orange',
              label='Exponential (Background)')
 
-    # Formatting
+    # change log
     plt.yscale('log')
     plt.ylim(0.1, counts.max() * 5)  # Adjusted for log scale visibility
     plt.xlabel(r'B candidate mass [MeV/$c^2$]')

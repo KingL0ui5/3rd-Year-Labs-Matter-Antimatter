@@ -5,6 +5,7 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 
 import pickle
 import math
+import config
 import dimuon_binning
 import filtered_data
 import matplotlib.pyplot as plt
@@ -17,17 +18,17 @@ sns.set_context('talk')
 # %% Data Loading Functions
 
 
-def __load_signal_data():
+def __load_signal_data(dataset):
     """
     Load the cleaned signal 2011 dataset after background fitting and weighting.
     Returns:
     pd.DataFrame
         The cleaned dataset with event weights applied.
     """
-    with open('data/cleaned_data_2011.pkl', 'rb') as f:
+    with open(f'data/cleaned_data_{dataset}.pkl', 'rb') as f:
         cleaned_data = pickle.load(f)
 
-        raw_data = filtered_data.load_2011_data()
+        raw_data = filtered_data.load_dataset(dataset=dataset)
 
         fig, ax = plt.subplots(2, 1, figsize=(10, 6))
         cleaned_data.hist('dimuon-system invariant mass', bins=200, ax=ax[0])
@@ -50,21 +51,6 @@ def __load_signal_data():
         ax[1].set_xlabel('B Invariant Mass [MeV]')
         plt.show()
     return cleaned_data
-
-
-def __load_cleaned_mag_data():
-    """
-    Load the cleaned magnetic 2012 dataset after background fitting and weighting.
-    Returns:
-    pd.DataFrame
-        The cleaned dataset with event weights applied.
-    """
-    with open('data/cleaned_data_2012.pkl', 'rb') as f:
-        cleaned_data = pickle.load(f)
-
-    mag_up = cleaned_data[cleaned_data['Magnet polarity'] == 1]
-    mag_down = cleaned_data[cleaned_data['Magnet polarity'] == -1]
-    return mag_up, mag_down
 
 
 # %% CP Asymmetry Calculations
@@ -456,7 +442,8 @@ def detector_asymmetry():
         The detector asymmetry value.
     """
 
-    mag_up, mag_down = __load_cleaned_mag_data()
+    mag_up = __load_signal_data('up')
+    mag_down = __load_signal_data('down')
 
     mag_up_asy = rare_decay_asymmetry(mag_up, plot=False)
     mag_down_asy = rare_decay_asymmetry(mag_down, plot=False)
@@ -466,12 +453,12 @@ def detector_asymmetry():
 
 
 if __name__ == "__main__":
-    pure_signal = filtered_data.load_simulation_data()
+    # pure_signal = filtered_data.load_simulation_data()
 
     # counts, uncertainties, inv_mass = dimuon_binning.B_counts(
     #     pure_signal, 1, plot=True)
 
-    signal_data = __load_signal_data()
+    signal_data = __load_signal_data(config.dataset)
     plot_psi_2s(signal_data)
     # cal_asy, mass_bins = asymmetry_calibrated(
     #     signal_data, n_bins=3, plot=False)
