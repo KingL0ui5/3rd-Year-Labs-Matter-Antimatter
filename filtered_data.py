@@ -9,7 +9,7 @@ import pickle
 from matplotlib import pyplot as plt
 import seaborn as sns
 from scipy.signal import find_peaks
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, KFold
 sns.set_style('darkgrid')
 sns.set_context('talk')
 sns.set_palette("colorblind")
@@ -201,43 +201,77 @@ class seperate:
             plt.yscale('log')
             plt.show()
 
+        # 1. Label the data in the main dataframe
         dataset['label'] = -1
         dataset.loc[is_signal, 'label'] = 1
         dataset.loc[is_background, 'label'] = 0
-        dataset = dataset[dataset['label'] != -1].reset_index(drop=True)
 
         samesign = load_samesign()
-        samesign['label'] = 0  # all background
-        dataset = pd.concat([dataset, samesign],
-                            ignore_index=True)
+        samesign['label'] = 0
+
+        dataset['fold'] = -1
+        samesign['fold'] = -1
 
         if k is not None:
+
+            # A. Split the LABELED data in 'dataset' (Signal + Sideband)
+            labeled_idx = dataset[dataset['label'] != -1].index
             skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
 
+            for fold_id, (_, test_idx) in enumerate(skf.split(dataset.loc[labeled_idx], dataset.loc[labeled_idx, 'label'])):
+                original_idx = labeled_idx[test_idx]
+                dataset.loc[original_idx, 'fold'] = fold_id
+
+            # B. Split the UNLABELED data in 'dataset' (The Rare Decay Search Region)
+            unlabeled_idx = dataset[dataset['label'] == -1].index
+            kf_unlabeled = KFold(n_splits=k, shuffle=True, random_state=42)
+
+            for fold_id, (_, test_idx) in enumerate(kf_unlabeled.split(unlabeled_idx)):
+                original_idx = unlabeled_idx[test_idx]
+                dataset.loc[original_idx, 'fold'] = fold_id
+
+            # C. Split the EXTERNAL data (Samesign) - FOR TRAINING ONLY
+            # We still split it so we don't overfit, but we WON'T add the test fold to evaluation
+            kf_samesign = KFold(n_splits=k, shuffle=True, random_state=42)
+            for fold_id, (_, test_idx) in enumerate(kf_samesign.split(samesign)):
+                samesign.iloc[test_idx,
+                              samesign.columns.get_loc('fold')] = fold_id
+
+            # --- CONSTRUCT THE LOOPS ---
             self.__splits = []
             self.__signal_parts = []
             self.__background_parts = []
 
-            for _, (train_idx, eval_idx) in enumerate(
-                    skf.split(dataset, dataset['label'])):
+            for fold_id in range(k):
+                # 1. Evaluation Set: ONLY from 'dataset' (Internal data)
+                # This excludes 'samesign' completely from evaluation
+                evaluation_fold = dataset[dataset['fold'] == fold_id]
 
-                evaluation_fold = dataset.iloc[eval_idx]
-                training_set = dataset.iloc[train_idx]
+                # 2. Training Set:
+                # Part A: Internal data NOT in this fold
+                internal_train = dataset[(dataset['fold'] != fold_id) & (
+                    dataset['label'] != -1)]
 
-                sig_train = training_set[training_set['label'] == 1].drop(columns=[
-                    'label'])
-                bkg_train = training_set[training_set['label'] == 0].drop(columns=[
-                    'label'])
+                # Part B: External 'samesign' data NOT in this fold
+                # We use 4/5ths of samesign for training, and discard the other 1/5th entirely
+                external_train = samesign[samesign['fold'] != fold_id]
+
+                # Combine training data
+                training_set = pd.concat(
+                    [internal_train, external_train], ignore_index=True)
+
+                # 3. Separate Signal and Background for the trainer
+                sig_train = training_set[training_set['label'] == 1].drop(
+                    columns=['label', 'fold'])
+                bkg_train = training_set[training_set['label'] == 0].drop(
+                    columns=['label', 'fold'])
 
                 self.__signal_parts.append(sig_train)
                 self.__background_parts.append(bkg_train)
 
-                self.__splits.append(evaluation_fold.drop(columns=['label']))
-
-        elif k is None:
-            # Standard logic for no folding
-            self.__signal_parts = signal
-            self.__background_parts = background
+                # Add the evaluation fold (dropping helper columns)
+                self.__splits.append(
+                    evaluation_fold.drop(columns=['label', 'fold']))
 
     def data(self, drop_cols: list = None,):
         """
@@ -336,3 +370,13 @@ def __task2():
 
 if __name__ == "__main__":
     seperate = seperate(k=5, plot=True, dataset='2011')
+
+    samesign = load_samesign()
+    data = load_2011_data()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    samesign.hist(column='B invariant mass', bins=100, ax=ax)
+    data.hist(column='B invariant mass', bins=100, ax=ax, alpha=0.4)
+    legend_labels = ['Same-sign Background', '2011 Dataset']
+    ax.legend(legend_labels, fontsize=12)
+
+    plt.show()
