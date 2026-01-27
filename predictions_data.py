@@ -76,6 +76,13 @@ class BDT_Analysis:
 
             indexed_data_k = self._seperation.dataset_k(k+1)
 
+            psi_2s = indexed_data_k[indexed_data_k['dimuon-system invariant mass'].between(
+                3200, 3600)]
+            psi_2s.hist(column='B invariant mass',
+                        bins=100, label=f'Fold {k}')
+            plt.title(f"fold {k} B invariant mass before classification")
+            plt.show()
+
             df_fold = pd.merge(indexed_data_k, pd.DataFrame(predictions, columns=['signal_probability']),
                                left_index=True, right_index=True)
 
@@ -85,6 +92,12 @@ class BDT_Analysis:
         plt.show()
 
         all_data = pd.concat(dataset, ignore_index=True)
+
+        psi_2s = all_data[(
+            all_data['dimuon-system invariant mass'].between(3200, 3600))]
+        psi_2s.hist(column='B invariant mass', bins=100)
+        plt.yscale('log')
+        plt.show()
         return all_data
 
     def __classify_data(self, feature='B invariant mass', hist: bool = False):
@@ -92,7 +105,7 @@ class BDT_Analysis:
 
         optimal_cutoff = self.__find_optimal_cutoff(
             data['signal_probability'], signal_range=(0.6, 1.0))
-        optimal_cutoff = 0.9
+        optimal_cutoff = 0.5
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
         classified_data = self.__determine_signal(
             data, optimal_cutoff, 0.5, 0.5)

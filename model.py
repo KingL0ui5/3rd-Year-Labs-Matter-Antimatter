@@ -2,6 +2,7 @@
 Using XGBoost to classify signal and background events.
 12/01
 """
+# %%
 import os
 import config
 import filtered_data
@@ -25,6 +26,7 @@ seperation = filtered_data.seperate(k=k, dataset=dataset)
 
 sig, bkg = seperation.data(drop_cols=config.drop_cols)
 
+# %%
 print('\n'.join(sig[0].keys()))
 
 #  save the filtered object

@@ -198,7 +198,7 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     rare_data = data[~(is_jpsi | is_psi2s)]
 
     #  compute calibration shift
-    delta_A, delta_A_unc = compute_combined_calibration(data, plot=False)
+    delta_A, delta_A_unc = compute_combined_calibration(data, plot=True)
 
     #  bins on only rare data
     counts, uncertainties, inv_mass = dimuon_binning.B_counts(
@@ -303,6 +303,9 @@ def compute_combined_calibration(data, plot: bool = False):
 
     combined_peak_data = data[is_jpsi | is_psi2s]
 
+    j_psi = data[is_jpsi]
+    psi_2s = data[is_psi2s]
+
     counts, uncertainties, _ = dimuon_binning.B_counts(
         combined_peak_data, n_bins=1)
     #  get counts for single bin
@@ -314,17 +317,34 @@ def compute_combined_calibration(data, plot: bool = False):
         B_plus, B_minus, B_p_unc, B_m_unc)
 
     if plot:
-        plt.figure(figsize=(10, 6))
-        plt.hist(data['dimuon-system invariant mass'], bins=200, alpha=0.5,
-                 color='gray', log=True, label='Mass Distribution')
-        splice_points = [2900, 3200, 3600, 3800]
-        plt.vlines(splice_points, ymin=0, ymax=10e6, colors='red',
-                   linestyles='dashed', alpha=0.8, label='Resonance Splicing')
+        j_psi.hist('B invariant mass', bins=200, alpha=0.5,
+                   color='orange', label='J/psi Peak'
+                   )
+        psi_2s.hist('B invariant mass', bins=200, alpha=0.5,
+                    color='purple', label='psi(2s) Peak'
+                    )
+        plt.legend()
+        plt.yscale('log')
+        plt.title('B Invariant Mass Spectrum: Calibration Peaks')
+        plt.xlabel('B Invariant Mass [MeV]')
 
-        plt.ylabel('Counts (Log Scale)')
-        plt.xlabel('Dimuon Invariant Mass [MeV]')
-        plt.title('Calibration Mass Spectrum')
+        combined_peak_data.hist('B invariant mass', bins=200,
+                                alpha=0.7, color='green', label='Combined Peaks'
+                                )
+
         plt.show()
+
+        # plt.figure(figsize=(10, 6))
+        # plt.hist(data['dimuon-system invariant mass'], bins=200, alpha=0.5,
+        #          color='gray', log=True, label='Mass Distribution')
+        # splice_points = [2900, 3200, 3600, 3800]
+        # plt.vlines(splice_points, ymin=0, ymax=10e6, colors='red',
+        #            linestyles='dashed', alpha=0.8, label='Resonance Splicing')
+
+        # plt.ylabel('Counts (Log Scale)')
+        # plt.xlabel('Dimuon Invariant Mass [MeV]')
+        # plt.title('Calibration Mass Spectrum')
+        # plt.show()
 
     B_plus, B_minus = counts[0]
     B_p_unc, B_m_unc = uncertainties[0]

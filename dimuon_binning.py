@@ -54,6 +54,13 @@ def bin_data(data, n_bins, plot=False):
         plt.tight_layout()
         plt.show()
 
+        for b in binned_data:
+            print((b.shape), "entries in bin")
+            print(min(b['B invariant mass']))
+            b.hist(column='B invariant mass', bins=100)
+            plt.title('B invariant mass distribution in each bin')
+            plt.show()
+
     return binned_data
 
 
@@ -143,6 +150,7 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
 
 
 def background_fit_cleaning(data, plotting=True):
+    raw_data = data.copy()
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
     data = data[(data['B invariant mass'] >= lower_obs) &
@@ -201,7 +209,7 @@ def background_fit_cleaning(data, plotting=True):
 
     if plotting:
         # We only plot if the data isn't empty and the model exists
-        plot_zfit_results(data, model, obs)
+        plot_zfit_results(raw_data, model, obs)
 
     # 8. Calculate Event Weights
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
@@ -222,6 +230,7 @@ def plot_zfit_results(data, model, obs):
     # 1. Calculate Histogram data for the scatter plot
     counts, bin_edges = np.histogram(
         data['B invariant mass'], bins=n_bins)
+    print(len(data), "data points plotted.")
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
     # 2. Plot Data as Scatter (with Poisson errors)
