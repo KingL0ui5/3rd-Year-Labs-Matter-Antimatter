@@ -92,7 +92,6 @@ class BDT_Analysis:
 
         optimal_cutoff = self.__find_optimal_cutoff(
             data['signal_probability'], signal_range=(0.6, 1.0))
-        optimal_cutoff = 0.6
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
         classified_data = self.__determine_signal(data, optimal_cutoff)
 
@@ -152,6 +151,7 @@ class BDT_Analysis:
         optimal_cutoff = cutoffs[np.argmax(weights)]
         plot_limit = 91
 
+        optimal_cutoff = 0.6
         plt.figure(figsize=(8, 5))
         plt.plot(cutoffs[:plot_limit], weights[:plot_limit],
                  label='Significance Curve')
@@ -173,12 +173,16 @@ class BDT_Analysis:
     def cleaned_data(self):
         return self._cleaned_data
 
-    def save_cleaned_data(self):
+    def save_cleaned_data(self, override=None):
         """
         Saves the cleaned data to a Pickle file.
         """
+        if override is not None:
+            data = override
+        else:
+            data = self._cleaned_data
         filename = f'data/cleaned_data_{self._dataset_name}.pkl'
-        self._cleaned_data.to_pickle(filename)
+        data.to_pickle(filename)
         print(f'Cleaned data saved to {filename}')
 
 
@@ -214,13 +218,19 @@ def analyze_k_mu_system(data):
     plt.legend()
     plt.show()
 
+    cut_data = data[data['k_mu_invariant_mass'] < 4000]
+    cut_data.hist(column='k_mu_invariant_mass', bins=100)
+    plt.show()
+
+    return cut_data
+
 
 if __name__ == "__main__":
     analyse = BDT_Analysis(plot=True)
-    analyse.save_cleaned_data()
     cleaned_data = analyse.cleaned_data()
 
-    analyze_k_mu_system(cleaned_data)
+    cut_data = analyze_k_mu_system(cleaned_data)
+    analyse.save_cleaned_data(override=cut_data)
 
 
 # %%

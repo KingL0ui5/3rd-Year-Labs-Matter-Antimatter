@@ -118,6 +118,7 @@ class seperate:
                 "dataset must be either '2011' or '2012'")
 
         #  signal selection criteria
+
         # is_signal = (dataset['dimuon-system invariant mass'].between(2950, 3200)
         #              ) | dataset['dimuon-system invariant mass'].between(3600, 3750)
 
