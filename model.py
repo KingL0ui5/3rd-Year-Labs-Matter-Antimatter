@@ -38,7 +38,7 @@ for i in range(k):
     nBackgroundTotal_k = bkg_k.shape[0]
 
     model_k = xgboost.XGBClassifier(
-        eval_metric='auc', early_stopping_rounds=50, n_estimators=1000, learning_rate=0.3, max_depth=6)
+        eval_metric='auc', early_stopping_rounds=50, n_estimators=1000, learning_rate=0.05, max_depth=6)
 
     # split data
     nSignalTrain_k = int(0.9*nSignalTotal_k)

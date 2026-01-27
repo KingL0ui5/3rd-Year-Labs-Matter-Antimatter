@@ -92,7 +92,6 @@ class BDT_Analysis:
 
         optimal_cutoff = self.__find_optimal_cutoff(
             data['signal_probability'], signal_range=(0.6, 1.0))
-        optimal_cutoff = 0.6
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
         classified_data = self.__determine_signal(data, optimal_cutoff)
 
@@ -149,8 +148,9 @@ class BDT_Analysis:
             weight = BDT_Analysis.__cutoff_ratio(filtered_probs, signal_range)
             weights.append(weight)
 
-        optimal_cutoff = cutoffs[np.argmax(weights)]
         plot_limit = 91
+        optimal_idx = np.argmax(weights[:plot_limit])
+        optimal_cutoff = cutoffs[optimal_idx]
 
         plt.figure(figsize=(8, 5))
         plt.plot(cutoffs[:plot_limit], weights[:plot_limit],
@@ -165,6 +165,7 @@ class BDT_Analysis:
         plt.legend()
         plt.grid(True, which="both", ls="-", alpha=0.2)
         plt.show()
+        optimal_cutoff = 0.2
 
         return optimal_cutoff
 

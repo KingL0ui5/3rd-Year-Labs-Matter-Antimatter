@@ -225,9 +225,8 @@ def plot_zfit_results(data, model, obs):
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
 
     # 2. Plot Data as Scatter (with Poisson errors)
-    # We use errorbar with fmt='ko' (black circles)
     plt.scatter(bin_centers, counts,
-                label='Data')
+                label='Data', color='black', s=10)
 
     # 3. Total Model Curve
     total_yield = model.get_yield().numpy()
@@ -246,10 +245,11 @@ def plot_zfit_results(data, model, obs):
              label='Exponential (Background)')
 
     # Formatting
-    # plt.yscale('log')
+    #plt.yscale('log')
     plt.ylim(0.1, counts.max() * 5)  # Adjusted for log scale visibility
     plt.xlabel(r'B candidate mass [MeV/$c^2$]')
     plt.ylabel(f'Events / ({bin_width:.1f} MeV)')
+    plt.yscale('log')
     plt.legend()
     plt.show()
 
@@ -259,7 +259,7 @@ def clean_signal(cleaned_data, plotting=True):
     yields = []
     yields_errors = []
     cleaned_data = __load_data()
-    binned_data = bin_data(cleaned_data, n_bins=5)
+    binned_data = bin_data(cleaned_data, n_bins=1)
 
     for n, data_bin in enumerate(binned_data):
         cleaned_df, sig_count_val, err = background_fit_cleaning(
@@ -324,6 +324,12 @@ def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_bal
     hist, bin_edges = np.histogram(
         new_data['B invariant mass'], bins=200, range=(5175, 5400))
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    bin_width = bin_edges[1] - bin_edges[0]
+
+    data_integral = np.sum(hist)
+    model_vals = crystal_ball(bin_centers, *popt_saved)
+    model_integral = np.sum(model_vals) * bin_width
+    print(f"Integral (total yield) in range: Data = {data_integral}, Model = {model_integral:.2f}")
 
     scale_factor = np.max(hist) / popt_saved[4]
     popt_scaled = popt_saved.copy()
@@ -340,23 +346,31 @@ def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_bal
 
     print(f"Reduced Chi-Squared: {reduced_chi_sq:.4f}")
 
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True,
-                                   gridspec_kw={'height_ratios': [3, 1]})
 
-    ax1.hist(new_data['B invariant mass'], bins=200, range=(5175, 5400),
-             alpha=0.3, label='Experimental Data', color='black')
-    ax1.plot(bin_centers, fit_on_new_data, 'r-', lw=2,
-             label=f'Simulated Signal (Scale: {scale_factor:.2f})')
-    ax1.set_ylabel("Candidates")
-    ax1.set_title('Overlay of the simulated signal with the experimental data')
-    ax1.legend()
+    # --- Normalized shape comparison plot (top), overlay (middle), residuals (bottom) ---
+    hist_norm = hist / np.max(hist) if np.max(hist) > 0 else hist
+    model_norm = model_vals / np.max(model_vals) if np.max(model_vals) > 0 else model_vals
 
-    ax2.errorbar(bin_centers, residuals, yerr=np.sqrt(
+    fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(10, 14), sharex=True)
+
+    # Top: Normalized shape comparison
+    ax0.step(bin_centers, hist_norm, where='mid', label='Data (normalized)', color='black')
+    ax0.plot(bin_centers, model_norm, label='Model (normalized)', color='red', linestyle='--')
+    ax0.set_ylabel('Normalized to Max')
+    ax0.set_title('Normalized Shape Comparison: Data vs Model')
+    ax0.legend()
+    ax0.set_xlim(5200, 5400)
+    ax0.grid(True, alpha=0.3)
+
+    # Bottom: Residuals
+    ax1.errorbar(bin_centers, residuals, yerr=np.sqrt(
         hist), fmt='ko', markersize=2)
-    ax2.axhline(0, color='red', linestyle='--')
-    ax2.set_ylabel("Data - Model")
-    ax2.set_xlabel(r'B candidate mass / MeV/$c^2$')
-    ax2.set_title('Residuals between the two datasets')
+    ax1.axhline(0, color='red', linestyle='--')
+    ax1.set_ylabel("Data - Model")
+    ax1.set_xlabel(r'B candidate mass / MeV/$c^2$')
+    ax1.set_title('Residuals between the two datasets')
+    ax1.set_xlim(5200, 5400)
+    ax1.grid(True, alpha=0.3)
 
     plt.tight_layout()
     plt.show()
@@ -365,12 +379,10 @@ def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_bal
 
 # %% should not be used in main code
 
-
 def __load_data():
     with open(f'data/cleaned_data_{config.dataset}.pkl', 'rb') as infile:
         data = pickle.load(infile)
     return data
-
 
 if __name__ == "__main__":
     test_data = __load_data()
