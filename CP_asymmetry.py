@@ -9,6 +9,7 @@ import dimuon_binning
 import filtered_data
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
 sns.set_style('darkgrid')
 sns.set_context('talk')
 
@@ -190,12 +191,20 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     Slices peaks out first, bins the remainder, and handles fit failures.
     Plots the spliced mass spectrum and the resulting CP asymmetry.
     """
-    is_jpsi = (data['dimuon-system invariant mass'] >= 2900) & \
-              (data['dimuon-system invariant mass'] <= 3200)
-    is_psi2s = (data['dimuon-system invariant mass'] >= 3600) & \
-               (data['dimuon-system invariant mass'] <= 3800)
+    is_jpsi = (data['dimuon-system invariant mass'] >= 2946) & \
+              (data['dimuon-system invariant mass'] <= 3176)
+    is_psi2s = (data['dimuon-system invariant mass'] >= 3586) & \
+               (data['dimuon-system invariant mass'] <= 3776)
 
-    rare_data = data[~(is_jpsi | is_psi2s)]
+    partially_reconstructed = data['B invariant mass'] < 5170
+
+    rare_data = data[~(is_jpsi | is_psi2s | partially_reconstructed)]
+
+    #  filter misidentified background from k_mu system
+    analyze_k_mu_system(rare_data)
+    rare_data = filter_misidentified_background(rare_data)
+    analyze_k_mu_system(rare_data)
+    #  filter partially reconstructed background too
 
     #  compute calibration shift
     delta_A, delta_A_unc = compute_combined_calibration(data, plot=False)
@@ -334,6 +343,92 @@ def compute_combined_calibration(data, plot: bool = False):
 
     return delta_A, delta_A_unc
 
+# %% K+mu-
+
+
+def filter_misidentified_background(data):
+    """
+    CRITICAL FIX 2: Calculates the Mass under the 'Swapped Hypothesis'.
+    Treats the Kaon as a Muon to find misidentified J/psi events.
+    """
+    M_MU = 105.658   # Muon mass in MeV
+    M_JPSI = 3096.9  # J/psi mass in MeV
+
+    K_px = data['Kaon 4-momentum x component']
+    K_py = data['Kaon 4-momentum y component']
+    K_pz = data['Kaon 4-momentum z component']
+
+    Mu_px = data['Opposite-sign muon 4-momentum x component']
+    Mu_py = data['Opposite-sign muon 4-momentum y component']
+    Mu_pz = data['Opposite-sign muon 4-momentum z component']
+
+    P2_K = K_px**2 + K_py**2 + K_pz**2
+    E_K_swapped = np.sqrt(P2_K + M_MU**2)
+
+    # Calculate Energy of the real Muon (using Muon mass)
+    P2_Mu = Mu_px**2 + Mu_py**2 + Mu_pz**2
+    E_Mu = np.sqrt(P2_Mu + M_MU**2)
+
+    # Calculate the Invariant Mass of the pair
+    E_tot = E_K_swapped + E_Mu
+    Px_tot = K_px + Mu_px
+    Py_tot = K_py + Mu_py
+    Pz_tot = K_pz + Mu_pz
+    P2_tot = Px_tot**2 + Py_tot**2 + Pz_tot**2
+
+    # Avoid negative inputs to sqrt due to precision issues
+    mass_squared = np.maximum(E_tot**2 - P2_tot, 0)
+    swapped_mass = np.sqrt(mass_squared)
+
+    # Define the Veto (Remove events near J/psi mass)
+    #: Veto if K-mu mass is consistent with J/psi
+    is_ghost_jpsi = (np.abs(swapped_mass - M_JPSI) < 60)
+
+    plt.figure(figsize=(10, 5))
+    plt.hist(swapped_mass, bins=100, range=(
+        2500, 3500), label='Before Veto', alpha=0.5)
+    plt.hist(swapped_mass[~is_ghost_jpsi], bins=100, range=(
+        2500, 3500), label='After Veto', alpha=0.5)
+    plt.axvline(M_JPSI, color='red', linestyle='--', label='J/psi Mass')
+    plt.title("Swapped Mass Hypothesis (Kaon treated as Muon)")
+    plt.legend()
+    plt.show()
+
+    # Return filtered data
+    return data[~is_ghost_jpsi]
+
+
+def analyze_k_mu_system(data):
+    """
+    Calculates K+mu- invariant mass and visualizes the spectrum.
+    """
+    e_sum = data['Kaon 4-momentum energy component'] + \
+        data['Opposite-sign muon 4-momentum energy component']
+
+    px_sum = data['Kaon 4-momentum x component'] + \
+        data['Opposite-sign muon 4-momentum x component']
+
+    py_sum = data['Kaon 4-momentum y component'] + \
+        data['Opposite-sign muon 4-momentum y component']
+
+    pz_sum = data['Kaon 4-momentum z component'] + \
+        data['Opposite-sign muon 4-momentum z component']
+
+    p_squared = px_sum**2 + py_sum**2 + pz_sum**2
+    k_mu_mass = np.sqrt(np.maximum(e_sum**2 - p_squared, 0))
+
+    data['k_mu_invariant_mass'] = k_mu_mass
+
+    plt.figure(figsize=(10, 6))
+    sns.histplot(data=data[data['signal'] == 1], x='k_mu_invariant_mass',
+                 bins=100, color='blue', label='Signal-like Candidates', kde=True)
+    plt.xlabel(r'$K^+\mu^-$ Invariant Mass [MeV/$c^2$]')
+    plt.ylabel('Candidates')
+    plt.title('Invariant Mass Spectrum of $K^+\mu^-$ System')
+    plt.legend()
+    plt.show()
+
+
 # %% Main execution block
 
 
@@ -369,7 +464,11 @@ def detector_asymmetry():
 
 
 if __name__ == "__main__":
-    # pure_signal = filtered_data.load_simulation_data()
+    pure_signal = filtered_data.load_simulation_data()
+
+    # counts, uncertainties, inv_mass = dimuon_binning.B_counts(
+    #     pure_signal, 1, plot=True)
+
     signal_data = __load_signal_data()
     plot_psi_2s(signal_data)
     # cal_asy, mass_bins = asymmetry_calibrated(

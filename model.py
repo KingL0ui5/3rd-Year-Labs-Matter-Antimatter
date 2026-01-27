@@ -22,6 +22,20 @@ dataset = config.dataset
 
 # %% Load Data
 seperation = filtered_data.seperate(k=k, dataset=dataset)
+sig_indexed, bkg_indexed = seperation.data()
+sig_indexed[0].hist('dimuon-system invariant mass', bins=100)
+plt.yscale('log')
+plt.title('Indexed Data: Dimuon System Invariant Mass')
+plt.xlabel('Dimuon System Invariant Mass [GeV/c^2]')
+plt.ylabel('log(Candidates)')
+plt.show()
+
+bkg_indexed[0].hist('B invariant mass', bins=100)
+plt.yscale('log')
+plt.title('Indexed Data: B Invariant Mass')
+plt.xlabel('B Invariant Mass [GeV/c^2]')
+plt.ylabel('log(Candidates)')
+plt.show()
 
 sig, bkg = seperation.data(drop_cols=config.drop_cols)
 
@@ -39,7 +53,7 @@ for i in range(k):
     nBackgroundTotal_k = bkg_k.shape[0]
 
     model_k = xgboost.XGBClassifier(
-        eval_metric='auc', early_stopping_rounds=50, n_estimators=1000, learning_rate=0.3, max_depth=10)
+        eval_metric='auc', early_stopping_rounds=50, n_estimators=1000, learning_rate=0.05, max_depth=4)
 
     # split data
     nSignalTrain_k = int(0.9*nSignalTotal_k)
