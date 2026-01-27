@@ -334,8 +334,24 @@ def compute_combined_calibration(data, plot: bool = False):
 
     return delta_A, delta_A_unc
 
-
 # %% Main execution block
+
+
+def plot_psi_2s(data):
+    """
+    Plots the dimuon invariant mass distribution around the psi(2s) resonance.
+    """
+    is_psi2s = data['dimuon-system invariant mass'].between(3600, 3750)
+
+    psi2s_data = data[is_psi2s]
+    psi2s_data.hist('B invariant mass', bins=100, figsize=(10, 6),
+                    color='purple', alpha=0.7)
+    plt.title('B Invariant Mass Distribution around $\psi(2S)$ Resonance')
+    plt.xlabel('B Invariant Mass [MeV]')
+    plt.ylabel('Counts')
+    plt.show()
+
+
 def detector_asymmetry():
     """
     Computes the detector asymmetry using magnet polarity reversal data.
@@ -355,6 +371,7 @@ def detector_asymmetry():
 if __name__ == "__main__":
     # pure_signal = filtered_data.load_simulation_data()
     signal_data = __load_signal_data()
+    plot_psi_2s(signal_data)
     # cal_asy, mass_bins = asymmetry_calibrated(
     #     signal_data, n_bins=3, plot=False)
 

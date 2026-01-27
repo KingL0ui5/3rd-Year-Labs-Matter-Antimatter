@@ -25,6 +25,7 @@ seperation = filtered_data.seperate(k=k, dataset=dataset)
 
 sig, bkg = seperation.data(drop_cols=config.drop_cols)
 
+print('\n'.join(sig[0].keys()))
 #  save the filtered object
 with open(f'data/filtered_data_{dataset}.pkl', 'wb') as f:
     pickle.dump(seperation, f)
@@ -38,7 +39,7 @@ for i in range(k):
     nBackgroundTotal_k = bkg_k.shape[0]
 
     model_k = xgboost.XGBClassifier(
-        eval_metric='auc', early_stopping_rounds=50, n_estimators=1000, learning_rate=0.05, max_depth=6)
+        eval_metric='auc', early_stopping_rounds=50, n_estimators=1000, learning_rate=0.3, max_depth=10)
 
     # split data
     nSignalTrain_k = int(0.9*nSignalTotal_k)
