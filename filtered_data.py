@@ -122,7 +122,7 @@ class seperate:
         # is_signal = (dataset['dimuon-system invariant mass'].between(2950, 3200)
         #              ) | dataset['dimuon-system invariant mass'].between(3600, 3750)
 
-        is_signal = dataset['dimuon-system invariant mass'].between(2950, 3200)
+        is_signal = dataset['dimuon-system invariant mass'].between(3050, 3150)
 
         #  background selection criteria
         is_background = (dataset['B invariant mass'] > 5350)

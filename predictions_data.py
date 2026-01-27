@@ -5,6 +5,7 @@ reconstructed, peaking and misidentified backgrounds (by sideband subtraction).
 
 15/01 - created
 """
+import filtered_data
 import os
 import numpy as np
 import pandas as pd
@@ -29,6 +30,7 @@ sns.set_context('talk')
 #     data.hist(column='B invariant mass', bins=500)
 #     plt.xlim(5100, 5500)
 #     return data
+
 
 # %% prediction class
 
@@ -69,8 +71,12 @@ class BDT_Analysis:
         """
         dataset = []
         for k, model in enumerate(self._models):
-            data_k = self._seperation.dataset_k(
-                k+1, drop_cols=config.drop_cols)
+            # data_k = self._seperation.dataset_k(
+            #     k+1, drop_cols=config.drop_cols)
+
+            data_k = filtered_data.load_samesign()
+            data_k = data_k.drop(columns=config.drop_cols)
+
             predictions = model.predict_proba(data_k)[:, 1]
             plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
 
@@ -190,49 +196,10 @@ class BDT_Analysis:
 
 # %% k muon system analysis
 
-def analyze_k_mu_system(data):
-    """
-    Calculates K+mu- invariant mass and visualizes the spectrum.
-    """
-    e_sum = data['Kaon 4-momentum energy component'] + \
-        data['Opposite-sign muon 4-momentum energy component']
-
-    px_sum = data['Kaon 4-momentum x component'] + \
-        data['Opposite-sign muon 4-momentum x component']
-
-    py_sum = data['Kaon 4-momentum y component'] + \
-        data['Opposite-sign muon 4-momentum y component']
-
-    pz_sum = data['Kaon 4-momentum z component'] + \
-        data['Opposite-sign muon 4-momentum z component']
-
-    p_squared = px_sum**2 + py_sum**2 + pz_sum**2
-    k_mu_mass = np.sqrt(np.maximum(e_sum**2 - p_squared, 0))
-
-    data['k_mu_invariant_mass'] = k_mu_mass
-
-    plt.figure(figsize=(10, 6))
-    sns.histplot(data=data[data['signal'] == 1], x='k_mu_invariant_mass',
-                 bins=100, color='blue', label='Signal-like Candidates', kde=True)
-    plt.xlabel(r'$K^+\mu^-$ Invariant Mass [MeV/$c^2$]')
-    plt.ylabel('Candidates')
-    plt.title('Invariant Mass Spectrum of $K^+\mu^-$ System')
-    plt.legend()
-    plt.show()
-
-    cut_data = data[data['k_mu_invariant_mass'] < 4000]
-    cut_data.hist(column='k_mu_invariant_mass', bins=100)
-    plt.show()
-
-    return cut_data
-
 
 if __name__ == "__main__":
     analyse = BDT_Analysis(plot=True)
     cleaned_data = analyse.cleaned_data()
-
-    cut_data = analyze_k_mu_system(cleaned_data)
-    analyse.save_cleaned_data(override=cut_data)
 
 
 # %%
