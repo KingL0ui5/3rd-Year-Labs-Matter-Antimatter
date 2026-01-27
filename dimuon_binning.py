@@ -107,6 +107,8 @@ def B_counts(data, n_bins, plot=False):
         _, B_plus, B_plus_uncertainty = background_fit_cleaning(bin_p)
         _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
 
+        print(B_plus, B_minus)
+
         if np.isclose(B_plus, 0, atol=0.01) or np.isclose(B_minus, 0, atol=0.01):
             continue
 
@@ -245,11 +247,10 @@ def plot_zfit_results(data, model, obs):
              label='Exponential (Background)')
 
     # Formatting
-    #plt.yscale('log')
+    plt.yscale('log')
     plt.ylim(0.1, counts.max() * 5)  # Adjusted for log scale visibility
     plt.xlabel(r'B candidate mass [MeV/$c^2$]')
     plt.ylabel(f'Events / ({bin_width:.1f} MeV)')
-    plt.yscale('log')
     plt.legend()
     plt.show()
 
@@ -329,7 +330,8 @@ def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_bal
     data_integral = np.sum(hist)
     model_vals = crystal_ball(bin_centers, *popt_saved)
     model_integral = np.sum(model_vals) * bin_width
-    print(f"Integral (total yield) in range: Data = {data_integral}, Model = {model_integral:.2f}")
+    print(
+        f"Integral (total yield) in range: Data = {data_integral}, Model = {model_integral:.2f}")
 
     scale_factor = np.max(hist) / popt_saved[4]
     popt_scaled = popt_saved.copy()
@@ -346,16 +348,18 @@ def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_bal
 
     print(f"Reduced Chi-Squared: {reduced_chi_sq:.4f}")
 
-
     # --- Normalized shape comparison plot (top), overlay (middle), residuals (bottom) ---
     hist_norm = hist / np.max(hist) if np.max(hist) > 0 else hist
-    model_norm = model_vals / np.max(model_vals) if np.max(model_vals) > 0 else model_vals
+    model_norm = model_vals / \
+        np.max(model_vals) if np.max(model_vals) > 0 else model_vals
 
     fig, (ax0, ax1) = plt.subplots(2, 1, figsize=(10, 14), sharex=True)
 
     # Top: Normalized shape comparison
-    ax0.step(bin_centers, hist_norm, where='mid', label='Data (normalized)', color='black')
-    ax0.plot(bin_centers, model_norm, label='Model (normalized)', color='red', linestyle='--')
+    ax0.step(bin_centers, hist_norm, where='mid',
+             label='Data (normalized)', color='black')
+    ax0.plot(bin_centers, model_norm, label='Model (normalized)',
+             color='red', linestyle='--')
     ax0.set_ylabel('Normalized to Max')
     ax0.set_title('Normalized Shape Comparison: Data vs Model')
     ax0.legend()
@@ -379,10 +383,12 @@ def overlay_and_calculate_residuals(new_data, params_path='data/popt_crystal_bal
 
 # %% should not be used in main code
 
+
 def __load_data():
     with open(f'data/cleaned_data_{config.dataset}.pkl', 'rb') as infile:
         data = pickle.load(infile)
     return data
+
 
 if __name__ == "__main__":
     test_data = __load_data()

@@ -71,19 +71,28 @@ class BDT_Analysis:
         """
         dataset = []
         for k, model in enumerate(self._models):
-            # data_k = self._seperation.dataset_k(
-            #     k+1, drop_cols=config.drop_cols)
-
-            data_k = filtered_data.load_samesign()
-            data_k = data_k.drop(columns=config.drop_cols)
+            data_k = self._seperation.dataset_k(
+                k+1, drop_cols=config.drop_cols)
 
             predictions = model.predict_proba(data_k)[:, 1]
+            print(predictions)
             plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
+
+            print(data_k.iloc[0][:5], f"prediction{predictions[0]}")
 
             indexed_data_k = self._seperation.dataset_k(k+1)
 
-            df_fold = pd.merge(indexed_data_k, pd.DataFrame(predictions, columns=['signal_probability']),
+            preds = pd.DataFrame(predictions, columns=[
+                                 'signal_probability'], index=indexed_data_k.index)
+            print(f"predictions df{preds.iloc[0]}")
+
+            df_fold = pd.merge(indexed_data_k, preds,
                                left_index=True, right_index=True)
+
+            print(indexed_data_k.iloc[0][:5])
+
+            print(
+                df_fold.iloc[0][:5], f"signal_probability: {df_fold.iloc[0]['signal_probability']}")
 
             dataset.append(df_fold)
 
@@ -98,6 +107,7 @@ class BDT_Analysis:
 
         optimal_cutoff = self.__find_optimal_cutoff(
             data['signal_probability'], signal_range=(0.6, 1.0))
+        optimal_cutoff = 0.6
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
         classified_data = self.__determine_signal(data, optimal_cutoff)
 
@@ -154,11 +164,8 @@ class BDT_Analysis:
             weight = BDT_Analysis.__cutoff_ratio(filtered_probs, signal_range)
             weights.append(weight)
 
+        optimal_cutoff = cutoffs[np.argmax(weights)]
         plot_limit = 91
-        optimal_idx = np.argmax(weights[:plot_limit])
-        optimal_cutoff = cutoffs[optimal_idx]
-
-        optimal_cutoff = 0.6
         plt.figure(figsize=(8, 5))
         plt.plot(cutoffs[:plot_limit], weights[:plot_limit],
                  label='Significance Curve')
@@ -172,7 +179,6 @@ class BDT_Analysis:
         plt.legend()
         plt.grid(True, which="both", ls="-", alpha=0.2)
         plt.show()
-        optimal_cutoff = 0.2
 
         return optimal_cutoff
 
@@ -194,12 +200,61 @@ class BDT_Analysis:
         print(f'Cleaned data saved to {filename}')
 
 
-# %% k muon system analysis
+# %% testing
 
+def run_preds_samesign():
+    print('Running predictions on samesign data...')
+    dataset = config.dataset
+
+    raw_samesign = filtered_data.load_samesign()
+    samesign = raw_samesign.copy()
+    models = []
+    preds = []
+
+    samesign = samesign.drop(columns=config.drop_cols)
+    for file in glob.glob(f'models_{dataset}/xgboost_model_*.pkl'):
+        model_k = int(os.path.basename(file).split('_')[-1].split('.')[0])
+        with open(file, 'rb') as infile:
+            model = pickle.load(infile)
+            models.append(model)
+
+    for model in models:
+        predictions = model.predict_proba(samesign)[:, 1]
+        plt.hist(predictions, bins=50, alpha=0.5,
+                 label=f'Model {models.index(model)}')
+        preds.append(predictions)
+        plt.yscale('log')
+
+    plt.legend()
+    plt.show()
+
+    avg_signal_prob = np.mean(preds, axis=0)
+    samesign['avg_signal_probability'] = avg_signal_prob
+    samesign['signal'] = (
+        samesign['avg_signal_probability'] >= 0.6).astype(int)
+    plt.hist(raw_samesign[samesign['signal'] == 1]['B invariant mass'],
+             bins=100, alpha=0.5, label='Classified Signal')
+    plt.hist(raw_samesign[samesign['signal'] == 0]['B invariant mass'],
+             bins=100, alpha=0.5, label='Classified Background')
+    plt.xlabel(r'B candidate mass / MeV/$c^2$')
+    plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+    plt.yscale('log')
+    plt.legend()
+    plt.show()
+
+    background_to_signal_ratio = samesign['signal'].value_counts(
+    )[0] / (samesign['signal'].value_counts()[1] + samesign['signal'].value_counts()[0])
+    print(
+        f'Background to Signal Ratio in Same-Sign Data: {background_to_signal_ratio:.2f}')
+
+
+# %% main
 
 if __name__ == "__main__":
     analyse = BDT_Analysis(plot=True)
-    cleaned_data = analyse.cleaned_data()
+    analyse.save_cleaned_data()
+
+    run_preds_samesign()
 
 
 # %%

@@ -196,6 +196,8 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     is_psi2s = (data['dimuon-system invariant mass'] >= 3586) & \
                (data['dimuon-system invariant mass'] <= 3776)
 
+    print(len(data[is_jpsi]), "events in resonance regions.")
+
     partially_reconstructed = data['B invariant mass'] < 5170
 
     rare_data = data[~(is_jpsi | is_psi2s | partially_reconstructed)]

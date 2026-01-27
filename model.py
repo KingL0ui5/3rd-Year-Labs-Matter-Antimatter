@@ -38,6 +38,7 @@ plt.ylabel('log(Candidates)')
 plt.show()
 
 sig, bkg = seperation.data(drop_cols=config.drop_cols)
+print(len(sig[0]) * k)
 
 print('\n'.join(sig[0].keys()))
 #  save the filtered object
