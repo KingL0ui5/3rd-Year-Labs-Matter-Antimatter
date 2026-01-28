@@ -57,7 +57,6 @@ def load_dataset(dataset: str = 'up'):
     """
     with open('datasets/dataset_2011.pkl', 'rb') as infile:
         dataset_2011 = pickle.load(infile)
-
     if dataset == 'down':
         with open('datasets/dataset_2012_MagnetDown.pkl', 'rb') as infile:
             dataset_2012_down = pickle.load(infile)
@@ -352,7 +351,7 @@ def __task2():
 
 
 if __name__ == "__main__":
-    seperate = seperate(k=5, plot=True, dataset='2011')
+    seperate = seperate(k=5, plot=True, dataset='down')
 
     samesign = load_samesign()
     data = load_dataset(dataset=config.dataset)

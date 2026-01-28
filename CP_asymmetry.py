@@ -336,8 +336,10 @@ def compute_combined_calibration(data, plot: bool = False):
 
 def filter_misidentified_background(data):
     """
-    CRITICAL FIX 2: Calculates the Mass under the 'Swapped Hypothesis'.
-    Treats the Kaon as a Muon to find misidentified J/psi events.
+    If you swap the mass of the kaon with the known mass of the muon in the calculation for invariant mass
+    you produce what the spectrum would look like if both particles were muons
+    This reveals a peak at the J/psi mass from misidentified J/psi -> mu mu decays
+    This can be removed 
     """
     M_MU = 105.658   # Muon mass in MeV
     M_JPSI = 3096.9  # J/psi mass in MeV
@@ -352,33 +354,39 @@ def filter_misidentified_background(data):
 
     P2_K = K_px**2 + K_py**2 + K_pz**2
     E_K_swapped = np.sqrt(P2_K + M_MU**2)
+    # calculate inv mass using kaon momentum but muon mass
+    # the swapped energy should be lower in theory
 
     # Calculate Energy of the real Muon (using Muon mass)
     P2_Mu = Mu_px**2 + Mu_py**2 + Mu_pz**2
     E_Mu = np.sqrt(P2_Mu + M_MU**2)
 
-    # Calculate the Invariant Mass of the pair
+    # Calculate the Invariant Mass of the pair (parent particle)
     E_tot = E_K_swapped + E_Mu
     Px_tot = K_px + Mu_px
     Py_tot = K_py + Mu_py
     Pz_tot = K_pz + Mu_pz
     P2_tot = Px_tot**2 + Py_tot**2 + Pz_tot**2
 
-    # Avoid negative inputs to sqrt due to precision issues
+    # Avoid negative inputs to sqrt
     mass_squared = np.maximum(E_tot**2 - P2_tot, 0)
     swapped_mass = np.sqrt(mass_squared)
 
-    # Define the Veto (Remove events near J/psi mass)
-    #: Veto if K-mu mass is consistent with J/psi
+    # Veto if K-mu mass is consistent with J/psi
+    # this means the particle labelled as a Kaon is a muon - so it revelals the J/psi peak from the q^2
+    #  the peak is misidentified J/psi -> mumu decay
+
     is_ghost_jpsi = (np.abs(swapped_mass - M_JPSI) < 60)
 
     plt.figure(figsize=(10, 5))
     plt.hist(swapped_mass, bins=100, range=(
-        2500, 3500), label='Before Veto', alpha=0.5)
+        2500, 3500), label='Removed by Veto', alpha=0.5)
     plt.hist(swapped_mass[~is_ghost_jpsi], bins=100, range=(
-        2500, 3500), label='After Veto', alpha=0.5)
+        2500, 3500), label='Kept by Veto', alpha=0.5)
     plt.axvline(M_JPSI, color='red', linestyle='--', label='J/psi Mass')
-    plt.title("Swapped Mass Hypothesis (Kaon treated as Muon)")
+    plt.title("Swapped Mass (Kaon mass as Muon mass) Spectrum")
+    plt.ylabel('Counts')
+    plt.xlabel(r'Invariant Mass [MeV]')
     plt.legend()
     plt.show()
 
