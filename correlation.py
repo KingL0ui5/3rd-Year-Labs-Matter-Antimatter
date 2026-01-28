@@ -1,102 +1,94 @@
-# Looking at how two features correlate with each other
-
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.feature_selection import mutual_info_regression
 import pandas as pd
 import seaborn as sns
+import textwrap
+
+sns.set_style('whitegrid')
+sns.set_context('talk')
 
 
-def plot_correlation_matrix(data):
-    correlation_matrix = data.corr()
-    plt.figure(figsize=(10, 8))
-    sns.heatmap(correlation_matrix, fmt=".2f", cmap='coolwarm',
-                square=True, xticklabels=False, yticklabels=False)
-    plt.title('Feature Correlation Heatmap')
-    # plt.savefig('figs/correlation_matrix.png')
-    plt.show()
+def calculate_and_plot_correlations(target, data, metric='Spearman', top_n=10, sample_size=20000):
+    """
+    Calculates a SINGLE correlation metric with 'target' and plots it.
 
+    Parameters:
+    -----------
+    target : str
+        The target column name.
+    data : pd.DataFrame
+        The dataframe.
+    metric : str
+        One of ['Pearson', 'Spearman', 'Mutual Info'].
+    """
 
-def drop_correlated(target, data, threshold=0.5):
-    correlations = data.corr().abs()[target]
-    to_drop = correlations[((correlations > threshold) &
-                           (correlations.index != target)) | correlations.isna()].index
-    print(f"Dropping {len(to_drop)} columns: {list(to_drop)}")
-    return data.drop(columns=to_drop)
-
-
-def calculate_all_correlations(target, data, sample_size=10000):
-    # 1. Representative Sampling for speed
     if len(data) > sample_size:
         print(f"Sampling {sample_size} events for speed...")
         calc_data = data.sample(n=sample_size, random_state=42)
     else:
         calc_data = data
 
-    # Ensure we only work with numeric, non-NaN data
     numeric_df = calc_data.select_dtypes(include=[np.number]).dropna()
+
+    if target not in numeric_df.columns:
+        raise ValueError(f"Target '{target}' not found in numeric columns.")
+
     X = numeric_df.drop(columns=[target])
     y = numeric_df[target]
 
-    print("Calculating Pearson, Spearman, and Kendall...")
-    pearson = numeric_df.corr(method='pearson')[target]
-    spearman = numeric_df.corr(method='spearman')[target]
-    kendall = numeric_df.corr(method='kendall')[target]
+    print(f"Calculating {metric} correlation with {target}...")
 
-    # Keeping MI calculation for the return dataframe, but skipping for plot
-    mi_scores = mutual_info_regression(X, y, n_jobs=-1, random_state=42)
-    mi_series = pd.Series(mi_scores, index=X.columns)
+    if metric == 'Pearson':
+        scores = X.corrwith(y, method='pearson').abs()
+    elif metric == 'Spearman':
+        scores = X.corrwith(y, method='spearman').abs()
+    elif metric == 'Mutual Info':
+        mi_scores = mutual_info_regression(X, y, random_state=42)
+        scores = pd.Series(mi_scores, index=X.columns)
+        scores = scores / scores.max()
+    else:
+        raise ValueError(
+            "Metric must be 'Pearson', 'Spearman', or 'Mutual Info'")
 
-    results = pd.DataFrame({
-        'Pearson': pearson,
-        'Spearman': spearman,
-        'Kendall': kendall,
-        'Mutual_Info': mi_series
-    }).drop(index=target, errors='ignore')
+    results = pd.DataFrame({metric: scores})
+    top_results = results.sort_values(by=metric, ascending=False).head(top_n)
 
-    methods = ['Pearson', 'Spearman', 'Kendall']
-    plot_data = results[methods]
+    top_results['Label'] = [
+        '\n'.join(textwrap.wrap(name, width=40)) for name in top_results.index
+    ]
 
-    fig, axes = plt.subplots(1, 3, figsize=(12, 8), sharey=True,
-                             gridspec_kw={'wspace': 0.5})
+    plt.figure(figsize=(10, len(top_results) * 0.8 + 2))
 
-    for i, method in enumerate(methods):
-        sns.heatmap(
-            plot_data[[method]],
-            ax=axes[i],
-            annot=False,
-            cmap='coolwarm',
-            yticklabels=False,
-            xticklabels=[method],  # Label the bar at the bottom
-            center=0,
-            cbar=False  # Remove individual colorbars for a cleaner look
-        )
-        for _, spine in axes[i].spines.items():
-            spine.set_visible(True)
-            spine.set_linewidth(0.5)
+    barplot = sns.barplot(
+        data=top_results,
+        x=metric,
+        y='Label',
+        palette='viridis',
+        hue=metric,      # Color by intensity
+        legend=False     # Hide legend (color bar is self-explanatory)
+    )
 
-    plt.suptitle(f'Statistical Correlation Methods with {target}', fontsize=16)
+    plt.title(
+        f'Top {top_n} Features by {metric} Correlation\n(Target: {target})', fontsize=16, pad=20)
+    plt.xlabel('Correlation Magnitude', fontsize=14)
+    plt.ylabel('')
 
-    mappable = axes[0].get_children()[0]
-    fig.colorbar(mappable, ax=axes, orientation='vertical',
-                 fraction=0.02, pad=0.04)
+    for i, container in enumerate(barplot.containers):
+        barplot.bar_label(container, fmt='%.2f', padding=5)
 
+    plt.xlim(0, 1.15)  # Add room for labels
+    plt.tight_layout()
     plt.show()
 
-    return results.sort_values(by='Mutual_Info', ascending=False)
+    return top_results
 
 
 if __name__ == "__main__":
-    # Load full dataset
-    data = pd.read_pickle('datasets/dataset_2011.pkl')
 
-    # Run calculation on sample
-    correlations_B = calculate_all_correlations('B invariant mass', data)
-    correlations_dimuon = calculate_all_correlations(
-        'dimuon-system invariant mass', data)
-
-    # Output results
-    correlations_B.to_csv("output_B.txt", sep='\t', index=True)
-    correlations_dimuon.to_csv("output_dimuon.txt", sep='\t', index=True)
-
-    print("Done! Results saved to output_B.txt and output_dimuon.txt")
+    import filtered_data
+    import config
+    data = filtered_data.load_dataset(dataset=config.dataset)
+    calculate_and_plot_correlations('B invariant mass', data, top_n=10)
+    calculate_and_plot_correlations(
+        'dimuon-system invariant mass', data, top_n=10)

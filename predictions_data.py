@@ -93,8 +93,8 @@ class BDT_Analysis:
                      bins=100, alpha=0.5, label='Classified Signal')
             plt.hist(classified_data[classified_data['signal'] == 0][feature],
                      bins=100, alpha=0.5, label='Classified Background')
-            plt.xlabel(r'B candidate mass / MeV/$c^2$')
-            plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+            plt.xlabel(r'B candidate mass [MeV/$c^2$]')
+            plt.ylabel(r'Candidates')
             plt.yscale('log')
             plt.legend()
             plt.show()
@@ -218,7 +218,7 @@ def run_preds_samesign():
                bins=100, alpha=0.5, label='Classified Background', color='red')
     ax[0].set_ylabel(r'Candidates')
 
-    ax[1].set_xlabel(r'B candidate mass / MeV/$c^2$')
+    ax[1].set_xlabel(r'B candidate mass [MeV/$c^2$]')
     ax[1].set_ylabel(r'Candidates')
     ax[0].set_ylim(
         1, 3*max(raw_samesign[samesign['signal'] == 0]['B invariant mass']))

@@ -1,7 +1,7 @@
 dataset = 'down'
-k = 10
+k = 3
 drop_cols = ['B invariant mass', 'dimuon-system invariant mass',
-             'Magnet polarity', 'Event ID']
+             'Magnet polarity', 'Event ID', 'Isolation: B mass if one extra track (best fit) is added']
 
 important_cols = ['B transverse momentum', 'Kaon transverse momentum',
                   'Opposite-sign muon transverse momentum',
