@@ -417,6 +417,8 @@ def analyze_k_mu_system(data):
     plt.legend()
     plt.show()
 
+# %%
+
 # %% Main execution block
 
 
@@ -485,9 +487,10 @@ def compute_detector_bias():
     print(f"Calibrated A_up:   {a_up:+.5f} ± {a_up_err:.5f}")
     print(f"Calibrated A_down: {a_down:+.5f} ± {a_down_err:.5f}")
     print("-" * 45)
-    print(f"ISOLATED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
+    print(
+        f"ISOLATED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
     print("="*45)
-    
+
     # Statistical Check: Is the bias significant?
     if abs(detector_bias) > 2 * bias_uncertainty:
         print("NOTE: Significant residual detector bias detected (>2 sigma).")
@@ -503,11 +506,11 @@ if __name__ == "__main__":
     # counts, uncertainties, inv_mass = dimuon_binning.B_counts(
     #     pure_signal, 1, plot=True)
 
-    #signal_data = __load_signal_data(config.dataset)
-    #plot_psi_2s(signal_data)
+    signal_data = __load_signal_data(config.dataset)
+    # plot_psi_2s(signal_data)
     # cal_asy, mass_bins = asymmetry_calibrated(
     #     signal_data, n_bins=3, plot=False)
 
-    #acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-    #    signal_data, n_bins=3, plot=True)
-    detector_bias, bias_uncertainty = compute_detector_bias()
+    acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
+        signal_data, n_bins=3, plot=True)
+    # detector_bias, bias_uncertainty = compute_detector_bias()
