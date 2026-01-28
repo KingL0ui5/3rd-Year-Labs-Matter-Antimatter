@@ -142,7 +142,8 @@ for i in range(k):
         ax_hist.hist(bkg_test_preds, bins=50, density=True,
                      histtype='step', linewidth=2, color='red', label='Bkg (Test)')
 
-        ax_hist.set_title(f'Overtraining Check (KS p-val: {ks_pval_sig:.2f})')
+        ax_hist.set_title(
+            f'Classifications Test vs Train (KS p-val: {ks_pval_sig:.2f})')
         ax_hist.set_xlabel('Signal Probability')
         ax_hist.set_ylabel('Normalized Density')
         ax_hist.legend()
@@ -209,33 +210,5 @@ print(
     f"{'Bkg p-value':<20}    | {np.mean(cv_metrics['ks_pval_bkg']):.4f}     | (Target: > 0.05)")
 print("="*50)
 
-all_importances = []
-for i, model in enumerate(models):
-    importance = model.get_booster().get_score(importance_type='gain')
-    for feat, score in importance.items():
-        all_importances.append(
-            {'Feature': feat, 'Importance': score, 'Fold': i})
 
-df_imp = pd.DataFrame(all_importances)
-
-order = df_imp.groupby('Feature')['Importance'].mean(
-).sort_values(ascending=False).index[:15]  # Top 15
-
-plt.figure(figsize=(12, 8))
-sns.barplot(
-    data=df_imp,
-    x='Importance',
-    y='Feature',
-    order=order,
-    errorbar='sd',       # Show standard deviation error bars
-    palette='viridis',
-    estimator=np.mean    # mean length of bars
-)
-
-plt.title(
-    f'Feature Importance Stability (Mean $\pm$ Std Dev across {k} folds)')
-plt.xlabel('Average Gain (Separation Power)')
-plt.ylabel('Feature')
-plt.grid(True, axis='x', alpha=0.3)
-plt.tight_layout()
-plt.show()
+# %%

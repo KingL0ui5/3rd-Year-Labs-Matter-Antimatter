@@ -1,11 +1,12 @@
 
-import numpy as np
-import matplotlib.pyplot as plt
-import zfit
-
 import pickle
 import pandas as pd
 import config
+import os
+import zfit
+import matplotlib.pyplot as plt
+import numpy as np
+os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '0'
 
 
 def bin_data(data, n_bins, plot=False):

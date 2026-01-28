@@ -186,6 +186,18 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
 
     partially_reconstructed = data['B invariant mass'] < 5170
 
+    fig, ax = plt.subplots(figsize=(10, 15))
+    data[partially_reconstructed].hist('B invariant mass', bins=100,
+                                       color='red', alpha=0.7,
+                                       label='Partially Reconstructed BG', ax=ax)
+    data[~partially_reconstructed].hist('B invariant mass', bins=100,
+                                        color='green', alpha=0.7, ax=ax)
+    plt.title('Partially Reconstructed Background Removal')
+    plt.xlabel('B Invariant Mass [MeV]')
+    plt.ylabel('Counts')
+    plt.legend()
+    plt.show()
+
     rare_data = data[~(is_jpsi | is_psi2s | partially_reconstructed)]
 
     #  filter misidentified background from k_mu system
