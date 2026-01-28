@@ -3,7 +3,6 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 20/01 - created
 """
 
-import os
 import pickle
 import math
 import config
@@ -40,7 +39,7 @@ def __load_signal_data(dataset):
         ax[0].set_title(
             'Dimuon Invariant Mass Distribution: Raw vs Cleaned Signal Data')
         ax[0].set_ylabel('Counts (Log Scale)')
-        ax[0].set_xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
+        ax[0].set_xlabel('Dimuon Invariant Mass [MeV]')
 
         cleaned_data.hist('B invariant mass', bins=200, ax=ax[1])
         raw_data.hist('B invariant mass', bins=200, alpha=0.5, ax=ax[1])
@@ -49,7 +48,7 @@ def __load_signal_data(dataset):
         ax[1].set_title(
             'B Invariant Mass Distribution: Raw vs Cleaned Signal Data')
         ax[1].set_ylabel('Counts (Log Scale)')
-        ax[1].set_xlabel(r'B Invariant Mass [MeV/$c^2$]')
+        ax[1].set_xlabel('B Invariant Mass [MeV]')
         plt.show()
     return cleaned_data
 
@@ -162,7 +161,7 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
         ax2.axhspan(-delta_A_unc, delta_A_unc, color='blue',
                     alpha=0.1, label='Calibration Precision')
 
-        ax2.set_xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
+        ax2.set_xlabel('Dimuon Invariant Mass [MeV]')
         ax2.set_ylabel('Corrected CP Asymmetry')
         ax2.set_ylim(-0.25, 0.25)
         ax2.legend(loc='upper right')
@@ -186,25 +185,6 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     print(len(data[is_jpsi]), "events in resonance regions.")
 
     partially_reconstructed = data['B invariant mass'] < 5170
-
-    bin_edges = np.linspace(data['B invariant mass'].min(),
-                            data['B invariant mass'].max(),
-                            100)  # 100 bins total
-
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    ax.hist(data[partially_reconstructed]['B invariant mass'], bins=bin_edges,
-            color='red', alpha=1.0, label='Partially Reconstructed BG')
-
-    ax.hist(data[~partially_reconstructed]['B invariant mass'], bins=bin_edges,
-            color='green', alpha=1.0, label='Signal Region')
-
-    plt.title('Partially Reconstructed Background Removal')
-    plt.xlabel(r'B Invariant Mass [MeV/$c^2$]')
-    plt.ylabel('Counts')
-    plt.yscale('log')
-    plt.legend()
-    plt.show()
 
     rare_data = data[~(is_jpsi | is_psi2s | partially_reconstructed)]
 
@@ -296,7 +276,7 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
                     label=f'Global Rare Average: {integrated_asy:.4f}')
 
         ax2.set_ylabel('Corrected CP Asymmetry')
-        ax2.set_xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
+        ax2.set_xlabel('Dimuon Invariant Mass [MeV]')
         ax2.set_ylim(-0.25, 0.25)
         ax2.legend(loc='upper right')
 
@@ -340,7 +320,7 @@ def compute_combined_calibration(data, plot: bool = False):
                    linestyles='dashed', alpha=0.8, label='Resonance Splicing')
 
         plt.ylabel('Counts (Log Scale)')
-        plt.xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
+        plt.xlabel('Dimuon Invariant Mass [MeV]')
         plt.title('Calibration Mass Spectrum')
         plt.show()
 
@@ -357,10 +337,8 @@ def compute_combined_calibration(data, plot: bool = False):
 
 def filter_misidentified_background(data):
     """
-    If you swap the mass of the kaon with the known mass of the muon in the calculation for invariant mass
-    you produce what the spectrum would look like if both particles were muons
-    This reveals a peak at the J/psi mass from misidentified J/psi -> mu mu decays
-    This can be removed 
+    CRITICAL FIX 2: Calculates the Mass under the 'Swapped Hypothesis'.
+    Treats the Kaon as a Muon to find misidentified J/psi events.
     """
     M_MU = 105.658   # Muon mass in MeV
     M_JPSI = 3096.9  # J/psi mass in MeV
@@ -375,39 +353,33 @@ def filter_misidentified_background(data):
 
     P2_K = K_px**2 + K_py**2 + K_pz**2
     E_K_swapped = np.sqrt(P2_K + M_MU**2)
-    # calculate inv mass using kaon momentum but muon mass
-    # the swapped energy should be lower in theory
 
     # Calculate Energy of the real Muon (using Muon mass)
     P2_Mu = Mu_px**2 + Mu_py**2 + Mu_pz**2
     E_Mu = np.sqrt(P2_Mu + M_MU**2)
 
-    # Calculate the Invariant Mass of the pair (parent particle)
+    # Calculate the Invariant Mass of the pair
     E_tot = E_K_swapped + E_Mu
     Px_tot = K_px + Mu_px
     Py_tot = K_py + Mu_py
     Pz_tot = K_pz + Mu_pz
     P2_tot = Px_tot**2 + Py_tot**2 + Pz_tot**2
 
-    # Avoid negative inputs to sqrt
+    # Avoid negative inputs to sqrt due to precision issues
     mass_squared = np.maximum(E_tot**2 - P2_tot, 0)
     swapped_mass = np.sqrt(mass_squared)
 
-    # Veto if K-mu mass is consistent with J/psi
-    # this means the particle labelled as a Kaon is a muon - so it revelals the J/psi peak from the q^2
-    #  the peak is misidentified J/psi -> mumu decay
-
+    # Define the Veto (Remove events near J/psi mass)
+    #: Veto if K-mu mass is consistent with J/psi
     is_ghost_jpsi = (np.abs(swapped_mass - M_JPSI) < 60)
 
     plt.figure(figsize=(10, 5))
     plt.hist(swapped_mass, bins=100, range=(
-        2500, 3500), label='Removed by Veto', alpha=0.5)
+        2500, 3500), label='Before Veto', alpha=0.5)
     plt.hist(swapped_mass[~is_ghost_jpsi], bins=100, range=(
-        2500, 3500), label='Kept by Veto', alpha=0.5)
+        2500, 3500), label='After Veto', alpha=0.5)
     plt.axvline(M_JPSI, color='red', linestyle='--', label='J/psi Mass')
-    plt.title("Swapped Mass (Kaon mass as Muon mass) Spectrum")
-    plt.ylabel('Counts')
-    plt.xlabel(r'Invariant Mass [MeV/$c^2$]')
+    plt.title("Swapped Mass Hypothesis (Kaon treated as Muon)")
     plt.legend()
     plt.show()
 
@@ -458,7 +430,7 @@ def plot_psi_2s(data):
     psi2s_data.hist('B invariant mass', bins=100, figsize=(10, 6),
                     color='purple', alpha=0.7)
     plt.title('B Invariant Mass Distribution around $\psi(2S)$ Resonance')
-    plt.xlabel(r'B Invariant Mass [MeV/$c^2$]')
+    plt.xlabel('B Invariant Mass [MeV]')
     plt.ylabel('Counts')
     plt.show()
 
@@ -507,43 +479,35 @@ def compute_detector_bias():
     # Uncertainty propagation for the difference
     bias_uncertainty = 0.5 * math.sqrt(a_up_err**2 + a_down_err**2)
 
-    print("\n" + "="*50)
-    print("DETECTOR BIAS STABILITY ANALYSIS")
-    print("="*50)
+    print("\n" + "="*45)
+    print("DETECTOR BIAS ANALYSIS (POST-CALIBRATION)")
+    print("="*45)
     print(f"Calibrated A_up:   {a_up:+.5f} ± {a_up_err:.5f}")
     print(f"Calibrated A_down: {a_down:+.5f} ± {a_down_err:.5f}")
-    print("-" * 50)
-
-    # Calculate significance (Z-score)
-    z_score = abs(detector_bias / bias_uncertainty)
-
-    print(
-        f"QUANTIFIED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
-
-    if z_score > 1.0:
-        print(
-            f"OBSERVATION: Clear detector-induced asymmetry detected at {z_score:.1f} sigma.")
-        print("This bias is consistent with expected spectrometer charge-asymmetry.")
+    print("-" * 45)
+    print(f"ISOLATED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
+    print("="*45)
+    
+    # Statistical Check: Is the bias significant?
+    if abs(detector_bias) > 2 * bias_uncertainty:
+        print("NOTE: Significant residual detector bias detected (>2 sigma).")
     else:
-        print(
-            f"OBSERVATION: Detector bias is small ({z_score:.1f} sigma) relative to statistical precision.")
-
-    print("="*50)
+        print("RESULT: Detector bias is compatible with zero within 2 sigma.")
 
     return detector_bias, bias_uncertainty
 
 
 if __name__ == "__main__":
-    pure_signal = filtered_data.load_simulation_data()
+    # pure_signal = filtered_data.load_simulation_data()
 
-    counts, uncertainties, inv_mass = dimuon_binning.B_counts(
-        pure_signal, 1, plot=True)
+    # counts, uncertainties, inv_mass = dimuon_binning.B_counts(
+    #     pure_signal, 1, plot=True)
 
-    signal_data = __load_signal_data(config.dataset)
-    plot_psi_2s(signal_data)
-    cal_asy, mass_bins = asymmetry_calibrated(
-        signal_data, n_bins=3, plot=False)
+    #signal_data = __load_signal_data(config.dataset)
+    #plot_psi_2s(signal_data)
+    # cal_asy, mass_bins = asymmetry_calibrated(
+    #     signal_data, n_bins=3, plot=False)
 
-    acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-        signal_data, n_bins=3, plot=True)
+    #acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
+    #    signal_data, n_bins=3, plot=True)
     detector_bias, bias_uncertainty = compute_detector_bias()

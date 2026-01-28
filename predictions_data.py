@@ -121,33 +121,35 @@ class BDT_Analysis:
         return data
 
     @staticmethod
-    def __cutoff_ratio(data_series, signal_range):
-        # Filter data_series to values within signal_range
-        filtered = data_series[(data_series >= signal_range[0])
-                               & (data_series <= signal_range[1])]
-        num_sig = len(filtered)  # Count of events in signal range
-        num_sigbck = len(data_series)  # Total events
-        weight = num_sig / np.sqrt(num_sigbck)
-        return weight
+    def __cutoff_ratio(data_with_mass, cutoff_val, signal_range):
+        survivors = data_with_mass[data_with_mass['BDT_prob'] >= cutoff_val]
+        
+        s_filter = (survivors['B invariant mass'] >= signal_range[0]) & \
+                   (survivors['B invariant mass'] <= signal_range[1])
+        S = len(survivors[s_filter])
+        
+        Stot = len(survivors[s_filter]) 
+        
+        if Stot <= 0: return 0
+        return S / np.sqrt(Stot)
 
     @staticmethod
-    def __find_optimal_cutoff(data_series, signal_range):
-        cutoffs = np.linspace(0, 1, 100)
+    @staticmethod
+    def __find_optimal_cutoff(full_df, signal_range):
+        # Assumes full_df has 'BDT_prob' and 'B invariant mass'
+        cutoffs = np.linspace(0, 0.99, 100)
         weights = []
 
         for cutoff in cutoffs:
-            filtered_probs = data_series[data_series >= cutoff]
-            weight = BDT_Analysis.__cutoff_ratio(filtered_probs, signal_range)
+            # Pass the dataframe so we can check both BDT prob and Mass
+            weight = BDT_Analysis.__cutoff_ratio(full_df, cutoff, signal_range)
             weights.append(weight)
 
         optimal_cutoff = cutoffs[np.argmax(weights)]
-        plot_limit = 91
-        plt.figure(figsize=(8, 5))
-        plt.plot(cutoffs[:plot_limit], weights[:plot_limit],
-                 label='Significance Curve')
-        if optimal_cutoff <= 0.9:
-            plt.axvline(optimal_cutoff, color='red', linestyle='--',
-                        label=f'Optimum: {optimal_cutoff:.2f}')
+        
+        # Plotting logic...
+        plt.plot(cutoffs, weights, label=f'Peak significance: {max(weights):.2f}')
+        plt.axvline(optimal_cutoff, color='red', label=f'Optimum: {optimal_cutoff:.2f}')
         plt.xlabel('Cutoff Probability')
         plt.ylabel(r'$S/\sqrt{S+B}$')
         plt.yscale('log')

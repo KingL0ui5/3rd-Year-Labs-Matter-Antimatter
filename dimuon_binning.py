@@ -1,14 +1,12 @@
 
-import zfit
-import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
-import os
 import pickle
 import pandas as pd
 import config
-os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+import os
+import zfit
+import matplotlib.pyplot as plt
+import numpy as np
+os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '0'
 
 
 def bin_data(data, n_bins, plot=False):
@@ -79,23 +77,14 @@ def split_Bs(data):
 def B_counts(data, n_bins, plot=False):
     """
     Returns the number of B+ and B- mesons in the dataset.
-
-    Parameters:
-    data : pd.DataFrame
-        The dataset in question.
-    n_bins : int
-        The number of bins to divide the data into based on dimuon-system invariant mass.
-
-    Returns:
-    tuple
-        An array containing the counts of B+ and B- mesons for each bin [(count_B_plus, count_B_minus)].
+    Updated to pass dynamic titles for binned mass spectrum plots.
     """
     B_plus, B_minus = split_Bs(data)
-    binned_B_plus = bin_data(B_plus, n_bins=n_bins, plot=plot)
-    binned_B_minus = bin_data(B_minus, n_bins=n_bins, plot=plot)
-
-    # binned_data = bin_data(data, n_bins=n_bins, plot=plot)
-    # binned_B_plus, binned_B_minus = split_Bs(binned_data)
+    
+    # We set plot=False here because we want the individual ZFit plots, 
+    # not the stacked binning histogram every time.
+    binned_B_plus = bin_data(B_plus, n_bins=n_bins, plot=False)
+    binned_B_minus = bin_data(B_minus, n_bins=n_bins, plot=False)
 
     bin_edges = np.linspace(min(data['dimuon-system invariant mass']),
                             max(data['dimuon-system invariant mass']),
@@ -107,16 +96,35 @@ def B_counts(data, n_bins, plot=False):
     bin_vals = []
 
     for i, (bin_p, bin_m) in enumerate(zip(binned_B_plus, binned_B_minus)):
-        _, B_plus, B_plus_uncertainty = background_fit_cleaning(bin_p)
-        _, B_minus, B_minus_uncertainty = background_fit_cleaning(bin_m)
+        # Define the mass range string for the titles
+        m_min, m_max = bin_edges[i], bin_edges[i+1]
+        range_str = f"{m_min:.0f}-{m_max:.0f} MeV"
+        
+        # Call background_fit_cleaning with dynamic titles
+        # This will flow into plot_zfit_results
+        _, n_plus, n_plus_unc = background_fit_cleaning(
+            bin_p, 
+            plotting=plot, 
+            plot_title=f'B+ Fit (Dimuon Bin {i}: {range_str})',
+            fold=f'Bplus_bin{i}'
+        )
+        
+        _, n_minus, n_minus_unc = background_fit_cleaning(
+            bin_m, 
+            plotting=plot, 
+            plot_title=f'B- Fit (Dimuon Bin {i}: {range_str})',
+            fold=f'Bminus_bin{i}'
+        )
 
-        print(B_plus, B_minus)
+        print(f"Bin {i} ({range_str}): B+={n_plus:.1f}, B-={n_minus:.1f}")
 
-        if np.isclose(B_plus, 0, atol=0.01) or np.isclose(B_minus, 0, atol=0.01):
+        # Safety check for empty or failed bins
+        if np.isclose(n_plus, 0, atol=0.01) or np.isclose(n_minus, 0, atol=0.01):
+            print(f"Skipping Bin {i} due to insufficient signal.")
             continue
 
-        counts.append((B_plus, B_minus))
-        uncertaintes.append((B_plus_uncertainty, B_minus_uncertainty))
+        counts.append((n_plus, n_minus))
+        uncertaintes.append((n_plus_unc, n_minus_unc))
         bin_vals.append(bin_centers[i])
 
     return counts, uncertaintes, np.array(bin_vals)
@@ -147,7 +155,7 @@ def total_fit_func(x, x0, sigma, alpha, n, N, a, b, c):
     return crystal_ball(x, x0, sigma, alpha, n, N) + (a * np.exp(b * (x - 5400)) + c)
 
 
-def background_fit_cleaning(data, plotting=True):
+def background_fit_cleaning(data, plotting=True, plot_title='Fit Result: B Invariant Mass Distribution', fold='all'):
     data = data[data['signal'] == 1].copy()
     lower_obs, upper_obs = 5200, 6500
     data = data[(data['B invariant mass'] >= lower_obs) &
@@ -206,7 +214,7 @@ def background_fit_cleaning(data, plotting=True):
 
     if plotting:
         # We only plot if the data isn't empty and the model exists
-        plot_zfit_results(data, model, obs)
+        plot_zfit_results(data, model, obs, plot_title=plot_title, fold=fold)
 
     # 8. Calculate Event Weights
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
