@@ -182,7 +182,6 @@ class seperate:
             plt.yscale('log')
             plt.show()
 
-        # 1. Label the data in the main dataframe
         dataset['label'] = -1
         dataset.loc[is_signal, 'label'] = 1
         dataset.loc[is_background, 'label'] = 0
@@ -197,16 +196,20 @@ class seperate:
 
             # A. Split the LABELED data in 'dataset' (Signal + Sideband)
             labeled_idx = dataset[dataset['label'] != -1].index
+            # preserves class proportions
             skf = StratifiedKFold(n_splits=k, shuffle=True, random_state=42)
 
+            # labels excluded data to model k
             for fold_id, (_, test_idx) in enumerate(skf.split(dataset.loc[labeled_idx], dataset.loc[labeled_idx, 'label'])):
                 original_idx = labeled_idx[test_idx]
                 dataset.loc[original_idx, 'fold'] = fold_id
 
             # B. Split the UNLABELED data in 'dataset' (The Rare Decay Search Region)
             unlabeled_idx = dataset[dataset['label'] == -1].index
-            kf_unlabeled = KFold(n_splits=k, shuffle=True, random_state=42)
+            kf_unlabeled = KFold(n_splits=k, shuffle=True,
+                                 random_state=42)  #  totally random split
 
+            # labels excluded data to model k
             for fold_id, (_, test_idx) in enumerate(kf_unlabeled.split(unlabeled_idx)):
                 original_idx = unlabeled_idx[test_idx]
                 dataset.loc[original_idx, 'fold'] = fold_id
@@ -214,6 +217,8 @@ class seperate:
             # C. Split the EXTERNAL data (Samesign) - FOR TRAINING ONLY
             # We still split it so we don't overfit, but we WON'T add the test fold to evaluation
             kf_samesign = KFold(n_splits=k, shuffle=True, random_state=42)
+
+            # labels excluded data to model k
             for fold_id, (_, test_idx) in enumerate(kf_samesign.split(samesign)):
                 samesign.iloc[test_idx,
                               samesign.columns.get_loc('fold')] = fold_id

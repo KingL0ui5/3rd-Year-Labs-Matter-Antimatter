@@ -57,27 +57,18 @@ class BDT_Analysis:
         dataset = []
         for k, model in enumerate(self._models):
             data_k = self._seperation.dataset_k(
-                k+1, drop_cols=config.drop_cols)
+                k, drop_cols=config.drop_cols)
 
             predictions = model.predict_proba(data_k)[:, 1]
-            print(predictions)
             plt.hist(predictions, bins=50, alpha=0.5, label=f'Fold {k}')
 
-            print(data_k.iloc[0][:5], f"prediction{predictions[0]}")
-
-            indexed_data_k = self._seperation.dataset_k(k+1)
+            indexed_data_k = self._seperation.dataset_k(k)
 
             preds = pd.DataFrame(predictions, columns=[
                                  'signal_probability'], index=indexed_data_k.index)
-            print(f"predictions df{preds.iloc[0]}")
 
             df_fold = pd.merge(indexed_data_k, preds,
                                left_index=True, right_index=True)
-
-            print(indexed_data_k.iloc[0][:5])
-
-            print(
-                df_fold.iloc[0][:5], f"signal_probability: {df_fold.iloc[0]['signal_probability']}")
 
             dataset.append(df_fold)
 
@@ -198,7 +189,6 @@ def run_preds_samesign():
 
     samesign = samesign.drop(columns=config.drop_cols)
     for file in glob.glob(f'models_{dataset}/xgboost_model_*.pkl'):
-        model_k = int(os.path.basename(file).split('_')[-1].split('.')[0])
         with open(file, 'rb') as infile:
             model = pickle.load(infile)
             models.append(model)
@@ -215,20 +205,33 @@ def run_preds_samesign():
 
     avg_signal_prob = np.mean(preds, axis=0)
     samesign['avg_signal_probability'] = avg_signal_prob
+
     samesign['signal'] = (
         samesign['avg_signal_probability'] >= 0.6).astype(int)
-    plt.hist(raw_samesign[samesign['signal'] == 1]['B invariant mass'],
-             bins=100, alpha=0.5, label='Classified Signal')
-    plt.hist(raw_samesign[samesign['signal'] == 0]['B invariant mass'],
-             bins=100, alpha=0.5, label='Classified Background')
-    plt.xlabel(r'B candidate mass / MeV/$c^2$')
-    plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
-    plt.yscale('log')
-    plt.legend()
+
+    fig, ax = plt.subplots(2, 1, figsize=(8, 5), sharex=True)
+    ax[0].hist(raw_samesign[samesign['signal'] == 1]['B invariant mass'],
+               bins=100, alpha=0.5, label='Classified Signal', color='green')
+    ax[1].hist(raw_samesign[samesign['signal'] == 0]['B invariant mass'],
+               bins=100, alpha=0.5, label='Classified Background', color='red')
+    ax[0].set_ylabel(r'Candidates')
+
+    ax[1].set_xlabel(r'B candidate mass / MeV/$c^2$')
+    ax[1].set_ylabel(r'Candidates')
+    ax[0].set_ylim(
+        1, 3*max(raw_samesign[samesign['signal'] == 0]['B invariant mass']))
+    ax[1].set_ylim(
+        1, 3*max(raw_samesign[samesign['signal'] == 0]['B invariant mass']))
+    ax[0].set_yscale('log')
+    ax[1].set_yscale('log')
+    ax[0].legend()
+    ax[1].legend()
+    ax[0].set_title('Same-Sign (Background) Data Classified by BDT Ensemble')
     plt.show()
 
     background_to_signal_ratio = samesign['signal'].value_counts(
     )[0] / (samesign['signal'].value_counts()[1] + samesign['signal'].value_counts()[0])
+
     print(
         f'Background to Signal Ratio in Same-Sign Data: {background_to_signal_ratio:.2f}')
 
