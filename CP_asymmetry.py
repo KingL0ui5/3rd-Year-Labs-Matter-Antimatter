@@ -306,6 +306,8 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     return integrated_asy, integrated_unc, corrected_asy, valid_masses
 
 # %% asymmetry calibration helper
+
+
 def compute_combined_calibration(data, plot: bool = False):
     """
     Concatenates J/psi and psi(2s) data to compute a single 
@@ -351,6 +353,7 @@ def compute_combined_calibration(data, plot: bool = False):
     return delta_A, delta_A_unc
 
 # %% K+mu-
+
 
 def filter_misidentified_background(data):
     """
@@ -410,6 +413,7 @@ def filter_misidentified_background(data):
 
     # Return filtered data
     return data[~is_ghost_jpsi]
+
 
 def analyze_k_mu_system(data):
     """
@@ -475,28 +479,31 @@ def detector_asymmetry():
     detector_asymmetry = 0.5 * (mag_up_asy - mag_down_asy)
     return detector_asymmetry
 
-#%% Detector bias estimation:
+# %% Detector bias estimation:
+
 
 def compute_detector_bias():
     """
     Isolates the detector-induced asymmetry bias by comparing 
     calibrated results from MagUp and MagDown.
-    
+
     This identifies the residual asymmetry that flips with magnet polarity.
     """
     # 1. Load the split datasets
     mag_up_data = __load_signal_data('up')
     mag_down_data = __load_signal_data('down')
 
-    # 2. Get the calibrated asymmetries 
+    # 2. Get the calibrated asymmetries
     # (These already have A_prod and global A_det removed via resonance peaks)
-    a_up, a_up_err, _, _ = rare_decay_asymmetry(mag_up_data, n_bins=1, plot=False)
-    a_down, a_down_err, _, _ = rare_decay_asymmetry(mag_down_data, n_bins=1, plot=False)
+    a_up, a_up_err, _, _ = rare_decay_asymmetry(
+        mag_up_data, n_bins=1, plot=False)
+    a_down, a_down_err, _, _ = rare_decay_asymmetry(
+        mag_down_data, n_bins=1, plot=False)
 
     # 3. Calculate Detector Bias (A_delta)
     # This is the residual difference caused by the magnet-detector interaction.
     detector_bias = 0.5 * (a_up - a_down)
-    
+
     # Uncertainty propagation for the difference
     bias_uncertainty = 0.5 * math.sqrt(a_up_err**2 + a_down_err**2)
 
@@ -506,32 +513,36 @@ def compute_detector_bias():
     print(f"Calibrated A_up:   {a_up:+.5f} ± {a_up_err:.5f}")
     print(f"Calibrated A_down: {a_down:+.5f} ± {a_down_err:.5f}")
     print("-" * 50)
-    
+
     # Calculate significance (Z-score)
     z_score = abs(detector_bias / bias_uncertainty)
-    
-    print(f"QUANTIFIED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
-    
+
+    print(
+        f"QUANTIFIED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
+
     if z_score > 1.0:
-        print(f"OBSERVATION: Clear detector-induced asymmetry detected at {z_score:.1f} sigma.")
+        print(
+            f"OBSERVATION: Clear detector-induced asymmetry detected at {z_score:.1f} sigma.")
         print("This bias is consistent with expected spectrometer charge-asymmetry.")
     else:
-        print(f"OBSERVATION: Detector bias is small ({z_score:.1f} sigma) relative to statistical precision.")
-        
+        print(
+            f"OBSERVATION: Detector bias is small ({z_score:.1f} sigma) relative to statistical precision.")
+
     print("="*50)
 
     return detector_bias, bias_uncertainty
+
 
 if __name__ == "__main__":
     pure_signal = filtered_data.load_simulation_data()
 
     counts, uncertainties, inv_mass = dimuon_binning.B_counts(
-         pure_signal, 1, plot=True)
+        pure_signal, 1, plot=True)
 
     signal_data = __load_signal_data(config.dataset)
     plot_psi_2s(signal_data)
     cal_asy, mass_bins = asymmetry_calibrated(
-         signal_data, n_bins=3, plot=False)
+        signal_data, n_bins=3, plot=False)
 
     acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
         signal_data, n_bins=3, plot=True)
