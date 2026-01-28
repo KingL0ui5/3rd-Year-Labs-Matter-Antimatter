@@ -123,17 +123,17 @@ class BDT_Analysis:
     @staticmethod
     def __cutoff_ratio(data_with_mass, cutoff_val, signal_range):
         survivors = data_with_mass[data_with_mass['BDT_prob'] >= cutoff_val]
-        
+
         s_filter = (survivors['B invariant mass'] >= signal_range[0]) & \
                    (survivors['B invariant mass'] <= signal_range[1])
         S = len(survivors[s_filter])
-        
-        Stot = len(survivors[s_filter]) 
-        
-        if Stot <= 0: return 0
+
+        Stot = len(survivors[s_filter])
+
+        if Stot <= 0:
+            return 0
         return S / np.sqrt(Stot)
 
-    @staticmethod
     @staticmethod
     def __find_optimal_cutoff(full_df, signal_range):
         # Assumes full_df has 'BDT_prob' and 'B invariant mass'
@@ -146,10 +146,12 @@ class BDT_Analysis:
             weights.append(weight)
 
         optimal_cutoff = cutoffs[np.argmax(weights)]
-        
+
         # Plotting logic...
-        plt.plot(cutoffs, weights, label=f'Peak significance: {max(weights):.2f}')
-        plt.axvline(optimal_cutoff, color='red', label=f'Optimum: {optimal_cutoff:.2f}')
+        plt.plot(cutoffs, weights,
+                 label=f'Peak significance: {max(weights):.2f}')
+        plt.axvline(optimal_cutoff, color='red',
+                    label=f'Optimum: {optimal_cutoff:.2f}')
         plt.xlabel('Cutoff Probability')
         plt.ylabel(r'$S/\sqrt{S+B}$')
         plt.yscale('log')

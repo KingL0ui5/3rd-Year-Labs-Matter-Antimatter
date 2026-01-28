@@ -1,7 +1,8 @@
-dataset = 'down'
-k = 3
+dataset = 'up'
+k = 10
+# note to self [LOUIS] I have f***ed up the model running on down dataset, will need to rerun
 drop_cols = ['B invariant mass', 'dimuon-system invariant mass',
-             'Magnet polarity', 'Event ID', 'Isolation: B mass if one extra track (best fit) is added']
+             'Magnet polarity', 'Event ID']
 
 important_cols = ['B transverse momentum', 'Kaon transverse momentum',
                   'Opposite-sign muon transverse momentum',
