@@ -1,12 +1,14 @@
 
+import zfit
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+import os
 import pickle
 import pandas as pd
 import config
-import os
-import zfit
-import matplotlib.pyplot as plt
-import numpy as np
-os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '0'
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 
 
 def bin_data(data, n_bins, plot=False):

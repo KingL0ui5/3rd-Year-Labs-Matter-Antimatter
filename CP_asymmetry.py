@@ -3,6 +3,7 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 20/01 - created
 """
 
+import os
 import pickle
 import math
 import config
@@ -39,7 +40,7 @@ def __load_signal_data(dataset):
         ax[0].set_title(
             'Dimuon Invariant Mass Distribution: Raw vs Cleaned Signal Data')
         ax[0].set_ylabel('Counts (Log Scale)')
-        ax[0].set_xlabel('Dimuon Invariant Mass [MeV]')
+        ax[0].set_xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
 
         cleaned_data.hist('B invariant mass', bins=200, ax=ax[1])
         raw_data.hist('B invariant mass', bins=200, alpha=0.5, ax=ax[1])
@@ -48,7 +49,7 @@ def __load_signal_data(dataset):
         ax[1].set_title(
             'B Invariant Mass Distribution: Raw vs Cleaned Signal Data')
         ax[1].set_ylabel('Counts (Log Scale)')
-        ax[1].set_xlabel('B Invariant Mass [MeV]')
+        ax[1].set_xlabel(r'B Invariant Mass [MeV/$c^2$]')
         plt.show()
     return cleaned_data
 
@@ -161,7 +162,7 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
         ax2.axhspan(-delta_A_unc, delta_A_unc, color='blue',
                     alpha=0.1, label='Calibration Precision')
 
-        ax2.set_xlabel('Dimuon Invariant Mass [MeV]')
+        ax2.set_xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
         ax2.set_ylabel('Corrected CP Asymmetry')
         ax2.set_ylim(-0.25, 0.25)
         ax2.legend(loc='upper right')
@@ -186,15 +187,22 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
 
     partially_reconstructed = data['B invariant mass'] < 5170
 
-    fig, ax = plt.subplots(figsize=(10, 15))
-    data[partially_reconstructed].hist('B invariant mass', bins=100,
-                                       color='red', alpha=0.7,
-                                       label='Partially Reconstructed BG', ax=ax)
-    data[~partially_reconstructed].hist('B invariant mass', bins=100,
-                                        color='green', alpha=0.7, ax=ax)
+    bin_edges = np.linspace(data['B invariant mass'].min(),
+                            data['B invariant mass'].max(),
+                            100)  # 100 bins total
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    ax.hist(data[partially_reconstructed]['B invariant mass'], bins=bin_edges,
+            color='red', alpha=1.0, label='Partially Reconstructed BG')
+
+    ax.hist(data[~partially_reconstructed]['B invariant mass'], bins=bin_edges,
+            color='green', alpha=1.0, label='Signal Region')
+
     plt.title('Partially Reconstructed Background Removal')
-    plt.xlabel('B Invariant Mass [MeV]')
+    plt.xlabel(r'B Invariant Mass [MeV/$c^2$]')
     plt.ylabel('Counts')
+    plt.yscale('log')
     plt.legend()
     plt.show()
 
@@ -288,7 +296,7 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
                     label=f'Global Rare Average: {integrated_asy:.4f}')
 
         ax2.set_ylabel('Corrected CP Asymmetry')
-        ax2.set_xlabel('Dimuon Invariant Mass [MeV]')
+        ax2.set_xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
         ax2.set_ylim(-0.25, 0.25)
         ax2.legend(loc='upper right')
 
@@ -330,7 +338,7 @@ def compute_combined_calibration(data, plot: bool = False):
                    linestyles='dashed', alpha=0.8, label='Resonance Splicing')
 
         plt.ylabel('Counts (Log Scale)')
-        plt.xlabel('Dimuon Invariant Mass [MeV]')
+        plt.xlabel(r'Dimuon Invariant Mass [MeV/$c^2$]')
         plt.title('Calibration Mass Spectrum')
         plt.show()
 
@@ -396,7 +404,7 @@ def filter_misidentified_background(data):
     plt.axvline(M_JPSI, color='red', linestyle='--', label='J/psi Mass')
     plt.title("Swapped Mass (Kaon mass as Muon mass) Spectrum")
     plt.ylabel('Counts')
-    plt.xlabel(r'Invariant Mass [MeV]')
+    plt.xlabel(r'Invariant Mass [MeV/$c^2$]')
     plt.legend()
     plt.show()
 
@@ -446,7 +454,7 @@ def plot_psi_2s(data):
     psi2s_data.hist('B invariant mass', bins=100, figsize=(10, 6),
                     color='purple', alpha=0.7)
     plt.title('B Invariant Mass Distribution around $\psi(2S)$ Resonance')
-    plt.xlabel('B Invariant Mass [MeV]')
+    plt.xlabel(r'B Invariant Mass [MeV/$c^2$]')
     plt.ylabel('Counts')
     plt.show()
 
