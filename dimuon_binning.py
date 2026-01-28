@@ -213,48 +213,72 @@ def background_fit_cleaning(data, plotting=True):
 
     return data, sig_val, sig_err
 
-
-def plot_zfit_results(data, model, obs):
+def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all'):
     lower, upper = obs.limit1d
     n_bins = 100
     x_plot = np.linspace(lower, upper, 1000)
     bin_width = (upper - lower) / n_bins
 
-    plt.figure(figsize=(10, 6))
-
-    # 1. Calculate Histogram data for the scatter plot
-    counts, bin_edges = np.histogram(
-        data['B invariant mass'], bins=n_bins)
+    # Create two subplots: Main plot (ratio 4) and Pull plot (ratio 1)
+    fig, (ax_main, ax_pull) = plt.subplots(2, 1, figsize=(12, 10), sharex=True, 
+                                           gridspec_kw={'height_ratios': [4, 1], 'hspace': 0.05})
+    
+    # Calculate Histogram data
+    counts, bin_edges = np.histogram(data['B invariant mass'], bins=n_bins)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    y_err = np.sqrt(counts)
 
-    # 2. Plot Data as Scatter (with Poisson errors)
-    plt.scatter(bin_centers, counts,
-                label='Data', color='black', s=10)
+    # --- MAIN PLOT ---
+    # Background & Signal
+    y_bkg = model.pdfs[1].pdf(x_plot).numpy() * model.pdfs[1].get_yield().numpy() * bin_width
+    ax_main.plot(x_plot, y_bkg, color='forestgreen', lw=2, label='Background (Exp)', zorder=1)
 
-    # 3. Total Model Curve
+    y_sig = model.pdfs[0].pdf(x_plot).numpy() * model.pdfs[0].get_yield().numpy() * bin_width
+    ax_main.plot(x_plot, y_sig, color='royalblue', lw=2, ls='--', label='Signal (CB)', zorder=2)
+
+    # Total Fit
     total_yield = model.get_yield().numpy()
     y_plot_tot = model.pdf(x_plot).numpy() * total_yield * bin_width
-    plt.plot(x_plot, y_plot_tot, 'r-', lw=2.5, label='Total Fit (CB + Exp)')
+    ax_main.plot(x_plot, y_plot_tot, color='crimson', lw=3.5, label='Total Fit', zorder=3)
 
-    # 4. Individual Components
-    y_sig = model.pdfs[0].pdf(x_plot).numpy() * \
-        model.pdfs[0].get_yield().numpy() * bin_width
-    y_bkg = model.pdfs[1].pdf(x_plot).numpy() * \
-        model.pdfs[1].get_yield().numpy() * bin_width
+    # Data Points (Zero-suppressed)
+    mask = counts > 0
+    ax_main.errorbar(bin_centers[mask], counts[mask], yerr=y_err[mask], fmt='ko', 
+                     markersize=6, capsize=0, elinewidth=1.5, label='Data', zorder=10)
 
-    plt.plot(x_plot, y_sig, '--', color='tab:blue',
-             label='Crystal Ball (Signal)')
-    plt.plot(x_plot, y_bkg, '--', color='tab:orange',
-             label='Exponential (Background)')
+    # --- PULL PLOT ---
+    # 1. Calculate the fit value at each bin center
+    fit_counts = model.pdf(bin_centers).numpy() * total_yield * bin_width
+    
+    # 2. Calculate Pulls: (Data - Fit) / Error
+    # We only calculate pulls where we have data to avoid dividing by zero
+    pulls = (counts[mask] - fit_counts[mask]) / y_err[mask]
+    
+    ax_pull.errorbar(bin_centers[mask], pulls, yerr=np.ones_like(pulls), fmt='ko', markersize=4)
+    ax_pull.axhline(0, color='crimson', lw=1)
+    ax_pull.fill_between(bin_centers[mask], -1, 1, color='gray', alpha=0.2) # 1-sigma band
+    ax_pull.fill_between(bin_centers[mask], -2, 2, color='gray', alpha=0.1) # 2-sigma band
 
-    # change log
-    plt.yscale('log')
-    plt.ylim(0.1, counts.max() * 5)  # Adjusted for log scale visibility
-    plt.xlabel(r'B candidate mass [MeV/$c^2$]')
-    plt.ylabel(f'Events / ({bin_width:.1f} MeV)')
-    plt.legend()
+    # Formatting
+    ax_main.set_title(plot_title, fontsize=20, pad=15)
+    ax_main.set_ylabel(f'Events / ({bin_width:.1f} MeV/$c^2$)', fontsize=16)
+    ax_main.legend(fontsize=14, frameon=True)
+    
+    ax_pull.set_xlabel(r'B candidate mass [MeV/$c^2$]', fontsize=16)
+    ax_pull.set_ylabel('Pull', fontsize=16)
+    ax_pull.set_ylim(-5, 5) # Pulls usually live between -3 and 3
+    ax_pull.set_yticks([-3, 0, 3])
+    
+    for ax in [ax_main, ax_pull]:
+        ax.tick_params(axis='both', which='major', labelsize=14)
+
+    if log_scale:
+        ax_main.set_yscale('log')
+        ax_main.set_ylim(0.1, counts.max() * 5)
+
+    plt.tight_layout()
+    plt.savefig(f'figs/fit_result_{fold}.png', dpi=300)
     plt.show()
-
 
 def clean_signal(cleaned_data, plotting=True):
     final_signal_data = []
