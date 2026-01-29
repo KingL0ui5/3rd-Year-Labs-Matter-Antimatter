@@ -325,14 +325,14 @@ def rare_decay_asymmetry(plot: bool = False):
         ax2.errorbar(valid_masses, avg_asy,
                      xerr=valid_widths,
                      yerr=avg_err,
-                     fmt='ko', capsize=3, label=r'Average $A_{CP}$')
+                     fmt='ko', capsize=3)
 
         ax2.axhline(0, color='red', linestyle='--', alpha=0.6)
         ax2.axhline(integrated_asy, color='green', linestyle=':', linewidth=2,
                     label=f'Int. Avg: {integrated_asy:.4f}')
 
         ax2.axvspan(jpsi_low, jpsi_high, color='gray',
-                    alpha=0.3, label='Resonances')
+                    alpha=0.3)
         ax2.axvspan(psi2s_low, psi2s_high, color='gray', alpha=0.3)
 
         ax2.set_ylabel(r'Avg $A_{CP}$')
