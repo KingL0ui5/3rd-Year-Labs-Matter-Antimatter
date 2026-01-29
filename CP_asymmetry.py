@@ -174,158 +174,161 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
     return corrected_asy, inv_mass
 
 
-def rare_decay_asymmetry(data, plot: bool = False):
+def rare_decay_asymmetry(plot: bool = False):
     """
-    Slices peaks out first, bins the remainder, and handles fit failures.
-    Plots the spliced mass spectrum and the resulting CP asymmetry.
+    Computes CP asymmetry separately for Magnet Up and Magnet Down data,
+    averages the results to cancel systematics, and plots the final asymmetry.
     """
-    jpsi_low, jpsi_high = 2946, 3176
-    psi2s_low, psi2s_high = 3586, 3776
 
-    is_jpsi = (data['dimuon-system invariant mass'] >= jpsi_low) & \
-              (data['dimuon-system invariant mass'] <= jpsi_high)
-    is_psi2s = (data['dimuon-system invariant mass'] >= psi2s_low) & \
-               (data['dimuon-system invariant mass'] <= psi2s_high)
+    # 1. Load Data Separately
+    raw_up = __load_signal_data('up')
+    raw_down = __load_signal_data('down')
 
-    partially_reconstructed = data['B invariant mass'] < 5170
+    # We will store processed results here to average later
+    polarity_results = {}
 
-    bin_edges = np.linspace(data['B invariant mass'].min(),
-                            data['B invariant mass'].max(),
-                            100)  # 100 bins total
+    # We need to keep track of total rare data for the histogram
+    all_rare_data = []
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    # 2. Process each polarity identically
+    for label, df in [('up', raw_up), ('down', raw_down)]:
+        print(f"\n--- Processing Magnet {label.upper()} ---")
 
-    ax.hist(data[partially_reconstructed]['B invariant mass'], bins=bin_edges,
-            color='red', alpha=1.0, label='Partially Reconstructed BG')
+        # --- A. Cuts & Filtering ---
+        jpsi_low, jpsi_high = 2946, 3176
+        psi2s_low, psi2s_high = 3586, 3776
 
-    ax.hist(data[~partially_reconstructed]['B invariant mass'], bins=bin_edges,
-            color='green', alpha=1.0, label='Signal Region')
+        is_jpsi = (df['dimuon-system invariant mass'] >= jpsi_low) & \
+                  (df['dimuon-system invariant mass'] <= jpsi_high)
+        is_psi2s = (df['dimuon-system invariant mass'] >= psi2s_low) & \
+                   (df['dimuon-system invariant mass'] <= psi2s_high)
 
-    plt.title('Partially Reconstructed Background Removal')
-    plt.xlabel(r'B Invariant Mass [MeV/$c^2$]')
-    bin_width = (data['B invariant mass'].max() -
-                 data['B invariant mass'].min()) / 100
+        partially_reconstructed = df['B invariant mass'] < 5170
 
-    plt.ylabel(f'Candidates / ({bin_width:.1f} MeV/$c^2$)')
-    plt.yscale('log')
-    plt.legend()
-    plt.show()
+        rare_df = df[~(is_jpsi | is_psi2s | partially_reconstructed)].copy()
 
-    rare_data = data[~(is_jpsi | is_psi2s | partially_reconstructed)]
+        analyze_k_mu_system(rare_df)
+        rare_df = filter_misidentified_background(rare_df)
+        analyze_k_mu_system(rare_df)
 
-    #  filter misidentified background from k_mu system
-    analyze_k_mu_system(rare_data)
-    rare_data = filter_misidentified_background(rare_data)
-    analyze_k_mu_system(rare_data)
-    #  filter partially reconstructed background too
+        all_rare_data.append(rare_df)
 
-    #  compute calibration shift
-    delta_A, delta_A_unc = compute_combined_calibration(data, plot=True)
+        delta_A, delta_A_unc = compute_combined_calibration(df, plot=plot)
+        print(
+            f"Calibration shift for {label}: {delta_A:.5f} ± {delta_A_unc:.5f}")
 
-    #  bins on only rare data
-    counts, uncertainties, (inv_mass, x_widths) = dimuon_binning.B_counts(
-        rare_data, one_bin=True, plot=True)
+        counts, uncertainties, (inv_mass, x_widths) = dimuon_binning.B_counts(
+            rare_df, one_bin=False, plot=plot
+        )
 
-    bin_edges = inv_mass - x_widths, inv_mass + x_widths
+        acp_values = []
+        acp_errors = []
 
-    corrected_asy = []
-    rare_vals = []
-    # weighted values for integration
-    rare_weights = []
-    valid_masses = []
-    valid_widths = []
+        for i in range(len(counts)):
+            B_p, B_m = counts[i]
+            B_p_u, B_m_u = uncertainties[i]
 
-    print(len(counts), "nbins for rare data.")
-    for i in range(len(counts)):
-        B_p, B_m = counts[i]
-        B_p_u, B_m_u = uncertainties[i]
+            raw_asy, raw_unc = compute_b_asymmetry(B_p, B_m, B_p_u, B_m_u)
 
-        # exception handling for failed fits (with unphysical uncertainties)
-        # if B_p_u <= 0 or B_m_u <= 0 or math.isnan(B_p_u) or math.isinf(B_p_u):
-        #     print(
-        #         f"Skipping bin {i} at {inv_mass[i]:.0f} MeV: Fit did not converge.")
-        #     continue
+            # Apply calibration: A_CP = A_raw - delta_A
+            val_corr = raw_asy - delta_A
 
-        raw_asy, raw_unc = compute_b_asymmetry(B_p, B_m, B_p_u, B_m_u)
+            # Error prop: sigma = sqrt(sigma_raw^2 + sigma_calib^2)
+            err_corr = math.sqrt(raw_unc**2 + delta_A_unc**2)
 
-        val_corr = raw_asy - delta_A
-        err_corr = math.sqrt(raw_unc**2 + delta_A_unc**2)
+            acp_values.append(val_corr)
+            acp_errors.append(err_corr)
 
-        corrected_asy.append((val_corr, err_corr))
-        valid_masses.append(inv_mass[i])
-        valid_widths.append(x_widths[i])
+        polarity_results[label] = {
+            'vals': np.array(acp_values),
+            'errs': np.array(acp_errors),
+            'mass': inv_mass,
+            'widths': x_widths
+        }
 
-        w = 1.0 / (err_corr**2)
-        rare_vals.append(val_corr * w)
-        rare_weights.append(w)
+    # 3. Average the Results (Arithmetic Mean)
+    # A_avg = (A_up + A_down) / 2
+    # sigma_avg = 0.5 * sqrt(sigma_up^2 + sigma_down^2)
 
-    # 4. Final Integration Check
-    if not rare_weights:
-        print("Error: No rare bins survived the fit. Try reducing n_bins.")
+    res_up = polarity_results['up']
+    res_down = polarity_results['down']
+
+    # Check bin consistency
+    if len(res_up['vals']) != len(res_down['vals']):
+        raise ValueError("Bin mismatch between Up and Down datasets.")
+
+    avg_asy = (res_up['vals'] + res_down['vals']) / 2.0
+    avg_err = 0.5 * np.sqrt(res_up['errs']**2 + res_down['errs']**2)
+
+    valid_masses = res_up['mass']
+    valid_widths = res_up['widths']
+
+    # 4. Integrate (Weighted Average of Bins)
+    # Weights w = 1 / sigma^2
+    weights = 1.0 / (avg_err**2)
+
+    # Handle potential infs if error is 0 (unlikely but safe to check)
+    weights[np.isinf(weights)] = 0
+
+    if np.sum(weights) == 0:
+        print("Error: Total weight is zero.")
         return 0.0, 0.0, [], []
 
-    integrated_asy = sum(rare_vals) / sum(rare_weights)
-    integrated_unc = math.sqrt(1.0 / sum(rare_weights))
+    integrated_asy = np.sum(avg_asy * weights) / np.sum(weights)
+    integrated_unc = math.sqrt(1.0 / np.sum(weights))
 
-    print(f"\n=== Spliced Rare Decay Results ===")
+    print(f"\n=== Final Combined Results (Up+Down) ===")
     print(f"Integrated Rare A_cp: {integrated_asy:.5f} ± {integrated_unc:.5f}")
 
+    # 5. Plotting
     if plot:
-        # Create a two-panel vertical plot
-        fig, ax = plt.subplots(figsize=(10, 10), sharex=True)
+        import pandas as pd
+        total_rare_data = pd.concat(all_rare_data)
 
-        # --- Top Plot: Spliced Histogram ---
-        ax.hist(rare_data['dimuon-system invariant mass'], bins=150,
-                color='steelblue', alpha=0.6, log=True, label='Spliced Data (Rare Only)')
+        fig, (ax1) = plt.subplots(figsize=(10, 12))
 
-        # Show where the bins are
-        ax.vlines(bin_edges[0], ymin=0, ymax=10e5, colors='red',
-                  linestyles='--', alpha=0.3, label='Bin Edges')
-        ax.vlines(bin_edges[1], ymin=0, ymax=10e5, colors='red',
-                  linestyles='--', alpha=0.3)
+        ax1.hist(total_rare_data['dimuon-system invariant mass'], bins=150,
+                 color='steelblue', alpha=0.6, log=True, label='Total Spliced Data')
 
-        ax.set_ylabel('Yield (Log Scale)')
-        ax.set_title('Dimuon Invariant Mass (Resonances Removed)')
-        ax.legend(loc='upper right')
+        # Bin edges visual
+        bin_edges = (valid_masses[0] - valid_widths[0],
+                     valid_masses[-1] + valid_widths[-1])
+        ax1.axvline(bin_edges[0], color='red',
+                    linestyle='--', alpha=0.3, label='Bin Edges')
+        ax1.axvline(bin_edges[1], color='red', linestyle='--', alpha=0.3)
 
-        # --- Bottom Plot: Corrected Asymmetry ---
-        print("plotting corrected asymmetry...")
-        y_points = [v[0] for v in corrected_asy]
-        y_errors = [v[1] for v in corrected_asy]
+        ax1.set_ylabel('Yield (Log Scale)')
+        ax1.set_title('Dimuon Invariant Mass (Resonances Removed)')
+        ax1.legend(loc='upper right')
+        ax1.grid(True, alpha=0.3)
 
         fig, ax2 = plt.subplots(figsize=(10, 6))
+        ax2.errorbar(valid_masses, avg_asy,
+                     xerr=valid_widths,
+                     yerr=avg_err,
+                     fmt='ko', capsize=3, label=r'Average $A_{CP}$')
 
-        ax2.errorbar(valid_masses, y_points,
-                     xerr=valid_widths,  # Add horizontal bars
-                     yerr=y_errors,
-                     fmt='ko', capsize=3)
-
-        # Integrated value
+        ax2.axhline(0, color='red', linestyle='--', alpha=0.6)
         ax2.axhline(integrated_asy, color='green', linestyle=':', linewidth=2,
-                    label=f'Avg: {integrated_asy:.3f} ± {integrated_unc:.3f}')
+                    label=f'Int. Avg: {integrated_asy:.4f}')
 
-        # --- NEW: Charmonium Resonance Lines ---
-        # J/psi at ~3096 MeV, Psi(2S) at ~3686 MeV
         ax2.axvspan(jpsi_low, jpsi_high, color='gray',
-                    alpha=0.3)
-        ax2.axvspan(psi2s_low, psi2s_high, color='gray',
-                    alpha=0.3)
+                    alpha=0.3, label='Resonances')
+        ax2.axvspan(psi2s_low, psi2s_high, color='gray', alpha=0.3)
 
-        ax2.set_ylabel('Corrected A$_{CP}$')
-        ax2.set_xlabel(r'q$^2$ [MeV/c$^2$]')
-        ax2.set_ylim(-0.2, 0.2)
-        first_bin_edge = valid_masses[0] - valid_widths[0]
-        last_bin_edge = valid_masses[-1] + valid_widths[-1]
-        ax2.set_xlim(first_bin_edge - 100, last_bin_edge + 100)
-        # 2 columns to fit resonance labels
-        ax2.legend(loc='upper left', ncol=1)
-        ax2.set_title('Corrected CP Asymmetry vs $q^2$')
+        ax2.set_ylabel(r'Avg $A_{CP}$')
+        ax2.set_xlabel(r'Dimuon Invariant Mass [MeV/c$^2$]')
+        ax2.set_ylim(-0.25, 0.25)
+        ax2.legend(loc='upper left', ncol=2)
+        ax2.set_title(r'Magnet-Averaged CP Asymmetry vs $q^2$')
+        ax2.grid(True, alpha=0.3)
 
-        plt.tight_layout()
+        plt.subplots_adjust(hspace=0.3)
+
         plt.show()
 
-    return integrated_asy, integrated_unc, corrected_asy, valid_masses
-
+    corrected_asy_list = list(zip(avg_asy, avg_err))
+    return integrated_asy, integrated_unc, corrected_asy_list, valid_masses
 
 # %% asymmetry calibration helper
 
@@ -665,9 +668,8 @@ def compute_detector_bias():
 
 if __name__ == "__main__":
 
-    signal_data = __load_signal_data(config.dataset)
-    acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-        signal_data, plot=True)
+    rare_decay_asymmetry(
+        plot=True)
 
     # compare_simulation_to_data()
 
