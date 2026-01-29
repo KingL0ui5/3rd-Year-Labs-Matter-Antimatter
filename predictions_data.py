@@ -15,7 +15,7 @@ import pickle
 import config
 import glob
 sns.set_style('darkgrid')
-sns.set_context('talk')
+sns.set_context('talk', font_scale=1.5)
 dataset = config.dataset
 
 # %% prediction class
@@ -213,15 +213,20 @@ def run_preds_samesign():
     samesign['signal'] = (
         samesign['avg_signal_probability'] >= 0.6).astype(int)
 
+
     fig, ax = plt.subplots(2, 1, figsize=(8, 5), sharex=True)
-    ax[0].hist(raw_samesign[samesign['signal'] == 1]['B invariant mass'],
-               bins=100, alpha=0.5, label='Classified Signal', color='green')
-    ax[1].hist(raw_samesign[samesign['signal'] == 0]['B invariant mass'],
-               bins=100, alpha=0.5, label='Classified Background', color='red')
-    ax[0].set_ylabel(r'Candidates')
+    # Plot histograms and get bin edges to calculate bin width
+    n_signal, bins_signal, _ = ax[0].hist(
+        raw_samesign[samesign['signal'] == 1]['B invariant mass'],
+        bins=100, alpha=0.5, label='Classified Signal', color='green')
+    n_bkg, bins_bkg, _ = ax[1].hist(
+        raw_samesign[samesign['signal'] == 0]['B invariant mass'],
+        bins=100, alpha=0.5, label='Classified Background', color='red')
+
+    # Calculate bin width (should be the same for both)
+    bin_width = bins_signal[1] - bins_signal[0]
 
     ax[1].set_xlabel(r'B candidate mass [MeV/$c^2$]')
-    ax[1].set_ylabel(r'Candidates')
     ax[0].set_ylim(
         1, 3*max(raw_samesign[samesign['signal'] == 0]['B invariant mass']))
     ax[1].set_ylim(
@@ -231,6 +236,9 @@ def run_preds_samesign():
     ax[0].legend()
     ax[1].legend()
     ax[0].set_title('Same-Sign (Background) Data Classified by BDT Ensemble')
+    # Communal y-label with bin width
+    fig.text(0.04, 0.5, fr'Candidates / {bin_width:.0f} MeV/$c^2$', va='center', rotation='vertical', ha='center')
+    plt.tight_layout(rect=[0.06, 0, 1, 1])
     plt.show()
 
     background_to_signal_ratio = samesign['signal'].value_counts(

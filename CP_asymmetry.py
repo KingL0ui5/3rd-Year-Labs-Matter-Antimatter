@@ -13,8 +13,6 @@ import seaborn as sns
 import numpy as np
 sns.set_style('darkgrid')
 sns.set_context('talk', font_scale=1.5)
-
-
 # %% Data Loading Functions
 
 

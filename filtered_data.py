@@ -112,33 +112,32 @@ class seperate:
         background = dataset[is_background]
 
         if plot is True:
-            fig, ax = plt.subplots(2, 1, figsize=(10, 6))
+            fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=False, layout="constrained")
             col_name = 'dimuon-system invariant mass'
             x_min = dataset[col_name].min()
             x_max = dataset[col_name].max()
             common_bins = np.linspace(x_min, x_max, 150)
 
-            ax[0].hist(dataset[col_name],
-                       bins=common_bins,
-                       color='lightgray',
-                       label='Total Dataset',
-                       edgecolor='black')
+            # Plot and get bin width for dimuon-system invariant mass
+            n_total, bins_total, _ = ax[0].hist(dataset[col_name],
+                                                bins=common_bins,
+                                                color='lightgray',
+                                                label='Total Dataset',
+                                                edgecolor='black')
+            n_signal, bins_signal, _ = ax[0].hist(signal[col_name],
+                                                  bins=common_bins,
+                                                  color='tab:blue',
+                                                  alpha=0.8,
+                                                  label='Signal',
+                                                  edgecolor='black',
+                                                  linewidth=0.5)
+            bin_width_0 = bins_total[1] - bins_total[0]
 
-            ax[0].hist(signal[col_name],
-                       bins=common_bins,
-                       color='tab:blue',       # distinct color for signal
-                       alpha=0.8,              # high opacity to make it pop
-                       label='Signal',
-                       edgecolor='black',
-                       linewidth=0.5)
-
-            ax[0].set_xlabel(
-                r'Dimuon-system Invariant Mass [MeV/$c^2$]', fontsize=14)
-            # Dynamically update the label with the correct width
-            ax[0].set_ylabel(
-                f'log(Count)', fontsize=14)
+            ax[0].set_xlabel(r'Dimuon-system Invariant Mass [MeV/$c^2$]')
+            y_label_0 = fr'log(Count) / {bin_width_0:.0f} MeV/$c^2$'
+            ax[0].set_ylabel(y_label_0, fontsize=20)
             ax[0].set_title(
-                'Signal and Background selection', fontsize=16)
+                'Signal and Background selection')
             ax[0].legend(fontsize=12, loc='upper right')
             ax[0].set_yscale('log')
 
@@ -146,39 +145,47 @@ class seperate:
             x_max = dataset['B invariant mass'].max()
             common_bins = np.linspace(x_min, x_max, 150)
 
-            # 2. Plot the Full Dataset first (in the background, lighter color)
-            ax[1].hist(dataset['B invariant mass'],
-                       bins=common_bins,
-                       color='lightgray',      # Neutral color
-                       label='Total Dataset',
-                       edgecolor='black')       # No edges for cleaner look
-
-            # 3. Plot the Background Data on top (Highlighted)
-            ax[1].hist(background['B invariant mass'],
-                       bins=common_bins,
-                       color='tab:red',        # Bright color to highlight
-                       alpha=0.7,              # Slight transparency
-                       label='Background',
-                       edgecolor='black',      # Add edge to pop out
-                       linewidth=0.5)
+            # Plot and get bin width for B invariant mass
+            n_total_b, bins_total_b, _ = ax[1].hist(dataset['B invariant mass'],
+                                                    bins=common_bins,
+                                                    color='lightgray',
+                                                    label='Total Dataset',
+                                                    edgecolor='black')
+            n_bkg, bins_bkg, _ = ax[1].hist(background['B invariant mass'],
+                                            bins=common_bins,
+                                            color='tab:red',
+                                            alpha=0.7,
+                                            label='Background',
+                                            edgecolor='black',
+                                            linewidth=0.5)
+            bin_width_1 = bins_total_b[1] - bins_total_b[0]
 
             ax[1].legend(fontsize=12, loc='upper right')
             ax[1].set_yscale('log')
-            ax[1].set_xlabel(r'B Invariant Mass [MeV/$c^2$]', fontsize=14)
-            ax[1].set_ylabel(r'log(Count)')
+            ax[1].set_xlabel(r'B Invariant Mass [MeV/$c^2$]')
+            y_label_1 = fr'log(Count) / {bin_width_1:.0f} MeV/$c^2$'
+            ax[1].set_ylabel(y_label_1, fontsize=20)
+            plt.tight_layout()
             plt.show()
 
+            # For the background and signal histograms below, get bin width from np.histogram
+            n_bkg_hist, bins_bkg_hist = np.histogram(background['dimuon-system invariant mass'], bins=100)
+            bin_width_bkg = bins_bkg_hist[1] - bins_bkg_hist[0]
             background.hist(column='dimuon-system invariant mass', bins=100)
             plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
-            plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+            plt.ylabel(fr'Candidates / ({bin_width_bkg:.0f} MeV/$c^2$)')
             plt.title("Background Dataset")
             plt.yscale('log')
             plt.show()
+
+            n_sig_hist, bins_sig_hist = np.histogram(signal['B invariant mass'], bins=100)
+            bin_width_sig = bins_sig_hist[1] - bins_sig_hist[0]
             signal.hist(column='B invariant mass', bins=100)
             plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
-            plt.ylabel(r'Candidates / (23 MeV/$c^2$)')
+            plt.ylabel(fr'Candidates / ({bin_width_sig:.0f} MeV/$c^2$)')
             plt.title("Signal Dataset")
             plt.yscale('log')
+
             plt.show()
 
         dataset['label'] = -1

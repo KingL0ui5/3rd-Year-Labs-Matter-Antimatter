@@ -14,8 +14,7 @@ import seaborn as sns
 import pickle
 import numpy as np
 sns.set_style('darkgrid')
-sns.set_context('talk')
-
+sns.set_context('talk', font_scale=1.5)
 detail = True
 models = []
 k = config.k
