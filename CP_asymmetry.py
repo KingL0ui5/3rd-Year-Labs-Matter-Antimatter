@@ -475,10 +475,19 @@ def analyze_k_mu_system(data):
     data['k_mu_invariant_mass'] = k_mu_mass
 
     plt.figure(figsize=(10, 6))
+    bins = 100
     sns.histplot(data=data[data['signal'] == 1], x='k_mu_invariant_mass',
-                 bins=100, color='blue', label='Signal-like Candidates', kde=True)
+                 bins=bins, color='blue', label='Signal-like Candidates', kde=True)
     plt.xlabel(r'$K^+\mu^-$ Invariant Mass [MeV/$c^2$]')
-    plt.ylabel('Candidates')
+
+    # compute bin width for display in ylabel
+    km = data['k_mu_invariant_mass'].dropna()
+    if len(km) > 0:
+        bin_width = (km.max() - km.min()) / bins
+    else:
+        bin_width = 0.0
+
+    plt.ylabel(f'Candidates / ({bin_width:.1f} MeV/$c^2$)')
     plt.title('Invariant Mass Spectrum of $K^+\mu^-$ System')
     plt.legend()
     plt.show()
@@ -495,10 +504,6 @@ def compare_simulation_to_data():
     - Real Data: plotted as black points with error bars.
     - Ratio Plot: attached below with no gap.
     """
-    print("\n" + "="*40)
-    print("Generating Publication-Quality Comparison...")
-    print("="*40)
-
     # 1. Load and Count Data
     # ----------------------
     real_data = __load_signal_data(config.dataset)
