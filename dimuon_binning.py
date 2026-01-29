@@ -138,6 +138,62 @@ def B_counts_simulation(data, plot=False, one_bin=False):
 
 def B_counts(data, plot=False, one_bin=False):
     """
+    Returns counts, uncertainties, and (centers, half_widths) for plotting.
+    """
+    B_plus, B_minus = split_Bs(data)
+
+    # Get dataframes and ranges (tuples)
+    binned_B_plus, ranges_MeV = bin_data(B_plus, plot=plot, one_bin=one_bin)
+    binned_B_minus, _ = bin_data(B_minus, plot=plot, one_bin=one_bin)
+
+    counts = []
+    uncertainties = []
+
+    bin_centers = []
+    bin_half_widths = []
+
+    # ZIP safely iterates over the Valid Bins only
+    for i, (bin_p, bin_m, (m_min, m_max)) in enumerate(zip(binned_B_plus, binned_B_minus, ranges_MeV)):
+
+        # Calculate center/width from the tuple directly
+        center = (m_min + m_max) / 2.0
+        half_width = (m_max - m_min) / 2.0
+
+        range_str = f"{m_min:.0f}-{m_max:.0f} MeV"
+
+        # Note: Ensure background_fit_cleaning is available here
+        _, n_plus, n_plus_unc = background_fit_cleaning(
+            bin_p,
+            plotting=plot,
+            plot_title=f'$B^+$ Fit (Bin {i}: {range_str})',
+            fold=f'Bplus_bin{i}'
+        )
+
+        _, n_minus, n_minus_unc = background_fit_cleaning(
+            bin_m,
+            plotting=plot,
+            plot_title=f'$B^-$ Fit (Bin {i}: {range_str})',
+            fold=f'Bminus_bin{i}'
+        )
+
+        print(f"Bin {i} ({range_str}): B+={n_plus:.1f}, B-={n_minus:.1f}")
+
+        # Basic safety check
+        if np.isclose(n_plus, 0, atol=0.01) or np.isclose(n_minus, 0, atol=0.01):
+            print(f"Skipping Bin {i} due to insufficient signal.")
+            continue
+
+        counts.append((n_plus, n_minus))
+        uncertainties.append((n_plus_unc, n_minus_unc))
+
+        bin_centers.append(center)
+        bin_half_widths.append(half_width)
+
+    return counts, uncertainties, (np.array(bin_centers), np.array(bin_half_widths))
+
+
+def B_counts_GeV(data, plot=False, one_bin=False):
+    """
     For REAL DATA: Splits into B+/B- and uses ZFIT to remove background.
     Returns calibrated signal yields.
 

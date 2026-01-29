@@ -74,7 +74,8 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
 
 def compute_asymmetry(data, plot: bool = True):
     n_bins = 15
-    counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins, one_bin=True)
+    counts, uncertainties, inv_mass = dimuon_binning.B_counts(
+        data, n_bins, one_bin=True)
 
     asy = []
     for bin_counts, count_uncertainty in zip(counts, uncertainties):
@@ -480,7 +481,7 @@ def compare_simulation_to_data():
     # ----------------------
     real_data = __load_signal_data(config.dataset)
     # Note: B_counts returns centers in GeV^2 now (after your unit fix)
-    real_counts, real_unc, (real_centers, real_widths) = dimuon_binning.B_counts(
+    real_counts, real_unc, (real_centers, real_widths) = dimuon_binning.B_counts_GeV(
         real_data, plot=False)
 
     real_yields = np.array([p + m for p, m in real_counts])
@@ -579,7 +580,7 @@ def compare_simulation_to_data():
 
     plt.tight_layout()
     # Re-apply hspace adjustment after tight_layout
-    plt.subplots_adjust(hspace=0.05)
+    plt.subplots_adjust(hspace=0.2)
 
     plt.show()
 
@@ -664,10 +665,10 @@ def compute_detector_bias():
 
 if __name__ == "__main__":
 
-    # signal_data = __load_signal_data(config.dataset)
-    # acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-    #     signal_data, plot=True)
+    signal_data = __load_signal_data(config.dataset)
+    acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
+        signal_data, plot=True)
 
-    compare_simulation_to_data()
+    # compare_simulation_to_data()
 
     # detector_bias, bias_uncertainty = compute_detector_bias()
