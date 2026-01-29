@@ -9,12 +9,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
+import textwrap  # <--- Added to handle text wrapping
 from sklearn.metrics import roc_curve, auc
 import config
-import filtered_data  # Required to load the data for ROC calculation
+import filtered_data
 
 sns.set_style('darkgrid')
-sns.set_context('talk')
+sns.set_context('talk', font_scale=1.5)
 
 dataset = config.dataset
 k = config.k
@@ -67,6 +68,15 @@ for i in range(k):
     aucs.append(auc(fpr, tpr))
 
 df_imp = pd.DataFrame(all_importances)
+
+# --- MODIFICATION START ---
+# Wrap text to approx 15-20 characters to force a split across lines
+# Adjust 'width' if your specific feature names need a different break point
+df_imp['Feature'] = df_imp['Feature'].apply(
+    lambda x: textwrap.fill(x, width=20))
+# --- MODIFICATION END ---
+
+# Re-calculate order using the NEW (wrapped) feature names
 order = df_imp.groupby('Feature')['Importance'].mean(
 ).sort_values(ascending=False).index[:10]
 
@@ -84,6 +94,8 @@ sns.barplot(
 plt.title(
     f'Feature Importance Stability (Mean $\pm$ Std Dev across {k} folds)')
 plt.xlabel('Average Gain (Separation Power)')
+# Increase font size slightly for readability if lines are split
+plt.tick_params(axis='y', labelsize=11)
 plt.tight_layout()
 plt.show()
 
