@@ -7,7 +7,7 @@ import zfit
 import matplotlib.pyplot as plt
 import numpy as np
 os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '0'
-
+plt.rcParams.update({'font.size': 40})
 
 def bin_data(data, n_bins, plot=False):
     """
@@ -223,7 +223,7 @@ def background_fit_cleaning(data, plotting=True, plot_title='Fit Result: B Invar
 
     return data, sig_val, sig_err
 
-def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all'):
+def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all', b_counts=10):
     lower, upper = obs.limit1d
     n_bins = 100
     x_plot = np.linspace(lower, upper, 1000)
@@ -256,14 +256,24 @@ def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result:
     ax_main.errorbar(bin_centers[mask], counts[mask], yerr=y_err[mask], fmt='ko', 
                      markersize=6, capsize=0, elinewidth=1.5, label='Data', zorder=10)
 
+    x_peak = bin_centers[counts.argmax()]
+    y_peak = counts.max()
+
+    if b_counts > 0:
+        textstr = f'B Count: {b_counts}'
+        props = dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='black')
+
+        ax_main.text(x_peak * 1.05, y_peak * 1.05, textstr,
+                    verticalalignment='bottom', horizontalalignment='center', bbox=props)
+
     # --- PULL PLOT ---
     # 1. Calculate the fit value at each bin center
     fit_counts = model.pdf(bin_centers).numpy() * total_yield * bin_width
-    
+
     # 2. Calculate Pulls: (Data - Fit) / Error
     # We only calculate pulls where we have data to avoid dividing by zero
     pulls = (counts[mask] - fit_counts[mask]) / y_err[mask]
-    
+
     ax_pull.errorbar(bin_centers[mask], pulls, yerr=np.ones_like(pulls), fmt='ko', markersize=4)
     ax_pull.axhline(0, color='crimson', lw=1)
     ax_pull.fill_between(bin_centers[mask], -1, 1, color='gray', alpha=0.2) # 1-sigma band

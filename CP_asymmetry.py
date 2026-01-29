@@ -512,5 +512,5 @@ if __name__ == "__main__":
     #     signal_data, n_bins=3, plot=False)
 
     acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-        signal_data, n_bins=3, plot=True)
+        signal_data, n_bins=1, plot=True)
     # detector_bias, bias_uncertainty = compute_detector_bias()

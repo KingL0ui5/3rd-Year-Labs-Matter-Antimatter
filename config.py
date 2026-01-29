@@ -1,5 +1,5 @@
 dataset = 'down'
-k = 3
+k = 10
 drop_cols = ['B invariant mass', 'dimuon-system invariant mass',
              'Magnet polarity', 'Event ID']
 
