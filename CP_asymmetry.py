@@ -622,6 +622,50 @@ def detector_asymmetry():
 # %% Detector bias estimation:
 
 
+def compute_detector_bias():
+    """
+    Isolates the detector-induced asymmetry bias by comparing 
+    calibrated results from MagUp and MagDown.
+
+    This identifies the residual asymmetry that flips with magnet polarity.
+    """
+    # 1. Load the split datasets
+    mag_up_data = __load_signal_data('up')
+    mag_down_data = __load_signal_data('down')
+
+    # 2. Get the calibrated asymmetries
+    # (These already have A_prod and global A_det removed via resonance peaks)
+    a_up, a_up_err, _, _ = rare_decay_asymmetry(
+        mag_up_data, n_bins=1, plot=False)
+    a_down, a_down_err, _, _ = rare_decay_asymmetry(
+        mag_down_data, n_bins=1, plot=False)
+
+    # 3. Calculate Detector Bias (A_delta)
+    # This is the residual difference caused by the magnet-detector interaction.
+    detector_bias = 0.5 * (a_up - a_down)
+
+    # Uncertainty propagation for the difference
+    bias_uncertainty = 0.5 * math.sqrt(a_up_err**2 + a_down_err**2)
+
+    print("\n" + "="*45)
+    print("DETECTOR BIAS ANALYSIS (POST-CALIBRATION)")
+    print("="*45)
+    print(f"Calibrated A_up:   {a_up:+.5f} ± {a_up_err:.5f}")
+    print(f"Calibrated A_down: {a_down:+.5f} ± {a_down_err:.5f}")
+    print("-" * 45)
+    print(
+        f"ISOLATED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
+    print("="*45)
+
+    # Statistical Check: Is the bias significant?
+    if abs(detector_bias) > 2 * bias_uncertainty:
+        print("NOTE: Significant residual detector bias detected (>2 sigma).")
+    else:
+        print("RESULT: Detector bias is compatible with zero within 2 sigma.")
+
+    return detector_bias, bias_uncertainty
+
+
 if __name__ == "__main__":
 
     rare_decay_asymmetry(
