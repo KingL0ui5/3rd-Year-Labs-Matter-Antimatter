@@ -177,24 +177,22 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
 def rare_decay_asymmetry(plot: bool = False):
     """
     Computes CP asymmetry separately for Magnet Up and Magnet Down data,
-    averages the results to cancel systematics, and plots the final asymmetry.
+    calculates the Detector Bias, averages the results to cancel systematics, 
+    and plots the final asymmetry.
     """
 
-    # 1. Load Data Separately
     raw_up = __load_signal_data('up')
     raw_down = __load_signal_data('down')
 
-    # We will store processed results here to average later
     polarity_results = {}
 
-    # We need to keep track of total rare data for the histogram
+    integrated_polarity_stats = {}
+
     all_rare_data = []
 
-    # 2. Process each polarity identically
     for label, df in [('up', raw_up), ('down', raw_down)]:
         print(f"\n--- Processing Magnet {label.upper()} ---")
 
-        # --- A. Cuts & Filtering ---
         jpsi_low, jpsi_high = 2946, 3176
         psi2s_low, psi2s_high = 3586, 3776
 
@@ -230,30 +228,58 @@ def rare_decay_asymmetry(plot: bool = False):
 
             raw_asy, raw_unc = compute_b_asymmetry(B_p, B_m, B_p_u, B_m_u)
 
-            # Apply calibration: A_CP = A_raw - delta_A
             val_corr = raw_asy - delta_A
 
-            # Error prop: sigma = sqrt(sigma_raw^2 + sigma_calib^2)
             err_corr = math.sqrt(raw_unc**2 + delta_A_unc**2)
 
             acp_values.append(val_corr)
             acp_errors.append(err_corr)
 
+        vals_arr = np.array(acp_values)
+        errs_arr = np.array(acp_errors)
+
         polarity_results[label] = {
-            'vals': np.array(acp_values),
-            'errs': np.array(acp_errors),
+            'vals': vals_arr,
+            'errs': errs_arr,
             'mass': inv_mass,
             'widths': x_widths
         }
 
-    # 3. Average the Results (Arithmetic Mean)
-    # A_avg = (A_up + A_down) / 2
-    # sigma_avg = 0.5 * sqrt(sigma_up^2 + sigma_down^2)
+        weights_pol = 1.0 / (errs_arr**2)
+        weights_pol[np.isinf(weights_pol)] = 0
+
+        if np.sum(weights_pol) > 0:
+            int_val_pol = np.sum(vals_arr * weights_pol) / np.sum(weights_pol)
+            int_err_pol = math.sqrt(1.0 / np.sum(weights_pol))
+        else:
+            int_val_pol, int_err_pol = 0.0, 0.0
+
+        integrated_polarity_stats[label] = (int_val_pol, int_err_pol)
+
+    a_up, a_up_err = integrated_polarity_stats['up']
+    a_down, a_down_err = integrated_polarity_stats['down']
+
+    detector_bias = 0.5 * (a_up - a_down)
+    bias_uncertainty = 0.5 * math.sqrt(a_up_err**2 + a_down_err**2)
+
+    print("\n" + "="*45)
+    print("DETECTOR BIAS ANALYSIS (POST-CALIBRATION)")
+    print("="*45)
+    print(f"Calibrated A_up:   {a_up:+.5f} ± {a_up_err:.5f}")
+    print(f"Calibrated A_down: {a_down:+.5f} ± {a_down_err:.5f}")
+    print("-" * 45)
+    print(
+        f"ISOLATED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
+
+    if abs(detector_bias) > 2 * bias_uncertainty:
+        print("NOTE: Significant residual detector bias detected (>2 sigma).")
+    else:
+        print("RESULT: Detector bias is compatible with zero within 2 sigma.")
+    print("="*45)
 
     res_up = polarity_results['up']
     res_down = polarity_results['down']
 
-    # Check bin consistency
     if len(res_up['vals']) != len(res_down['vals']):
         raise ValueError("Bin mismatch between Up and Down datasets.")
 
@@ -263,11 +289,7 @@ def rare_decay_asymmetry(plot: bool = False):
     valid_masses = res_up['mass']
     valid_widths = res_up['widths']
 
-    # 4. Integrate (Weighted Average of Bins)
-    # Weights w = 1 / sigma^2
     weights = 1.0 / (avg_err**2)
-
-    # Handle potential infs if error is 0 (unlikely but safe to check)
     weights[np.isinf(weights)] = 0
 
     if np.sum(weights) == 0:
@@ -280,9 +302,7 @@ def rare_decay_asymmetry(plot: bool = False):
     print(f"\n=== Final Combined Results (Up+Down) ===")
     print(f"Integrated Rare A_cp: {integrated_asy:.5f} ± {integrated_unc:.5f}")
 
-    # 5. Plotting
     if plot:
-        import pandas as pd
         total_rare_data = pd.concat(all_rare_data)
 
         fig, (ax1) = plt.subplots(figsize=(10, 12))
@@ -290,7 +310,6 @@ def rare_decay_asymmetry(plot: bool = False):
         ax1.hist(total_rare_data['dimuon-system invariant mass'], bins=150,
                  color='steelblue', alpha=0.6, log=True, label='Total Spliced Data')
 
-        # Bin edges visual
         bin_edges = (valid_masses[0] - valid_widths[0],
                      valid_masses[-1] + valid_widths[-1])
         ax1.axvline(bin_edges[0], color='red',
@@ -302,7 +321,7 @@ def rare_decay_asymmetry(plot: bool = False):
         ax1.legend(loc='upper right')
         ax1.grid(True, alpha=0.3)
 
-        fig, ax2 = plt.subplots(figsize=(10, 6))
+        fig2, ax2 = plt.subplots(figsize=(10, 6))
         ax2.errorbar(valid_masses, avg_asy,
                      xerr=valid_widths,
                      yerr=avg_err,
@@ -324,11 +343,11 @@ def rare_decay_asymmetry(plot: bool = False):
         ax2.grid(True, alpha=0.3)
 
         plt.subplots_adjust(hspace=0.3)
-
         plt.show()
 
     corrected_asy_list = list(zip(avg_asy, avg_err))
-    return integrated_asy, integrated_unc, corrected_asy_list, valid_masses
+
+    return integrated_asy, integrated_unc, corrected_asy_list, valid_masses, detector_bias, bias_uncertainty
 
 # %% asymmetry calibration helper
 
@@ -601,69 +620,6 @@ def plot_psi_2s(data):
     plt.xlabel('B Invariant Mass [MeV]')
     plt.ylabel('Counts')
     plt.show()
-
-
-def detector_asymmetry():
-    """
-    Computes the detector asymmetry using magnet polarity reversal data.
-    returns: float
-        The detector asymmetry value.
-    """
-
-    mag_up = __load_signal_data('up')
-    mag_down = __load_signal_data('down')
-
-    mag_up_asy = rare_decay_asymmetry(mag_up, plot=False)
-    mag_down_asy = rare_decay_asymmetry(mag_down, plot=False)
-
-    detector_asymmetry = 0.5 * (mag_up_asy - mag_down_asy)
-    return detector_asymmetry
-
-# %% Detector bias estimation:
-
-
-def compute_detector_bias():
-    """
-    Isolates the detector-induced asymmetry bias by comparing 
-    calibrated results from MagUp and MagDown.
-
-    This identifies the residual asymmetry that flips with magnet polarity.
-    """
-    # 1. Load the split datasets
-    mag_up_data = __load_signal_data('up')
-    mag_down_data = __load_signal_data('down')
-
-    # 2. Get the calibrated asymmetries
-    # (These already have A_prod and global A_det removed via resonance peaks)
-    a_up, a_up_err, _, _ = rare_decay_asymmetry(
-        mag_up_data, n_bins=1, plot=False)
-    a_down, a_down_err, _, _ = rare_decay_asymmetry(
-        mag_down_data, n_bins=1, plot=False)
-
-    # 3. Calculate Detector Bias (A_delta)
-    # This is the residual difference caused by the magnet-detector interaction.
-    detector_bias = 0.5 * (a_up - a_down)
-
-    # Uncertainty propagation for the difference
-    bias_uncertainty = 0.5 * math.sqrt(a_up_err**2 + a_down_err**2)
-
-    print("\n" + "="*45)
-    print("DETECTOR BIAS ANALYSIS (POST-CALIBRATION)")
-    print("="*45)
-    print(f"Calibrated A_up:   {a_up:+.5f} ± {a_up_err:.5f}")
-    print(f"Calibrated A_down: {a_down:+.5f} ± {a_down_err:.5f}")
-    print("-" * 45)
-    print(
-        f"ISOLATED DETECTOR BIAS: {detector_bias:+.5f} ± {bias_uncertainty:.5f}")
-    print("="*45)
-
-    # Statistical Check: Is the bias significant?
-    if abs(detector_bias) > 2 * bias_uncertainty:
-        print("NOTE: Significant residual detector bias detected (>2 sigma).")
-    else:
-        print("RESULT: Detector bias is compatible with zero within 2 sigma.")
-
-    return detector_bias, bias_uncertainty
 
 
 if __name__ == "__main__":
