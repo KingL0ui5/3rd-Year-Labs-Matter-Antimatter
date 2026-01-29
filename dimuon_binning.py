@@ -138,56 +138,58 @@ def B_counts_simulation(data, plot=False, one_bin=False):
 
 def B_counts(data, plot=False, one_bin=False):
     """
-    Returns counts, uncertainties, and (centers, half_widths) for plotting.
+    For REAL DATA: Splits into B+/B- and uses ZFIT to remove background.
+    Returns calibrated signal yields.
+
+    UPDATED: Returns bin_centers in q^2 (GeV^2), not Invariant Mass (MeV).
     """
     B_plus, B_minus = split_Bs(data)
 
-    # Get dataframes and ranges (tuples)
+    # Bin the dataframes
     binned_B_plus, ranges_MeV = bin_data(B_plus, plot=plot, one_bin=one_bin)
     binned_B_minus, _ = bin_data(B_minus, plot=plot, one_bin=one_bin)
 
     counts = []
     uncertainties = []
-
     bin_centers = []
     bin_half_widths = []
 
-    # ZIP safely iterates over the Valid Bins only
+    print("--- Starting Fits for Real Data ---")
     for i, (bin_p, bin_m, (m_min, m_max)) in enumerate(zip(binned_B_plus, binned_B_minus, ranges_MeV)):
 
-        # Calculate center/width from the tuple directly
-        center = (m_min + m_max) / 2.0
-        half_width = (m_max - m_min) / 2.0
+        range_str = f"{m_min:.0f}-{m_max:.0f} MeV"
 
-        range_str = f"{m_min:.0f}-{m_max:.0f} MeV /c$^2$"
-
-        # Note: Ensure background_fit_cleaning is available here
+        # Fit B+
         _, n_plus, n_plus_unc = background_fit_cleaning(
-            bin_p,
-            plotting=plot,
-            plot_title=f'$B^+$ Fit for entire q$^2$ range',
-            fold=f'Bplus_bin{i}'
+            bin_p, plotting=plot, plot_title=f'$B^+$ Fit (Bin {i}: {range_str})', fold=f'Bplus_bin{i}'
         )
 
+        # Fit B-
         _, n_minus, n_minus_unc = background_fit_cleaning(
-            bin_m,
-            plotting=plot,
-            plot_title=f'$B^-$ Fit for entire q$^2$ range',
-            fold=f'Bminus_bin{i}'
+            bin_m, plotting=plot, plot_title=f'$B^-$ Fit (Bin {i}: {range_str})', fold=f'Bminus_bin{i}'
         )
 
-        print(f"Bin {i} ({range_str}): B+={n_plus:.1f}, B-={n_minus:.1f}")
-
-        # Basic safety check
-        if np.isclose(n_plus, 0, atol=0.01) or np.isclose(n_minus, 0, atol=0.01):
-            print(f"Skipping Bin {i} due to insufficient signal.")
+        # Skip bin if fits failed or returned zero signal
+        if np.isclose(n_plus, 0) or np.isclose(n_minus, 0):
+            print(f"Skipping Bin {i} ({range_str}): Insufficient signal.")
             continue
 
         counts.append((n_plus, n_minus))
         uncertainties.append((n_plus_unc, n_minus_unc))
 
-        bin_centers.append(center)
-        bin_half_widths.append(half_width)
+        # --- UNIT FIX IS HERE ---
+        # Convert MeV Mass ranges back to q^2 in GeV^2
+        # q (GeV) = m_min / 1000
+        # q^2 (GeV^2) = (m_min / 1000)^2
+        low_gev2 = (m_min / 1000.0)**2
+        high_gev2 = (m_max / 1000.0)**2
+
+        # Calculate center and width in GeV^2
+        q2_center = (low_gev2 + high_gev2) / 2.0
+        q2_width = (high_gev2 - low_gev2) / 2.0
+
+        bin_centers.append(q2_center)
+        bin_half_widths.append(q2_width)
 
     return counts, uncertainties, (np.array(bin_centers), np.array(bin_half_widths))
 

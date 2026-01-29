@@ -467,35 +467,35 @@ def analyze_k_mu_system(data):
 
 def compare_simulation_to_data():
     """
-    Comparison Update:
-    - Real Data: Uses Total Yield (B+ and B-).
-    - Simulation: Uses B+ Only (scaled to match Total Real Data area).
-
-    This compares the SHAPE of the B+ efficiency to the SHAPE of the Total Data yield.
+    Plots a publication-quality comparison of Real Data vs Simulation.
+    - Simulation: plotted as a filled histogram (since it represents the 'shape').
+    - Real Data: plotted as black points with error bars.
+    - Ratio Plot: attached below with no gap.
     """
+    print("\n" + "="*40)
+    print("Generating Publication-Quality Comparison...")
+    print("="*40)
 
+    # 1. Load and Count Data
+    # ----------------------
     real_data = __load_signal_data(config.dataset)
-    # Turn off plotting for individual fits to save time
+    # Note: B_counts returns centers in GeV^2 now (after your unit fix)
     real_counts, real_unc, (real_centers, real_widths) = dimuon_binning.B_counts(
         real_data, plot=False)
 
-    # Sum B+ and B- to get total yield per bin
     real_yields = np.array([p + m for p, m in real_counts])
     real_errors = np.array([np.sqrt(pu**2 + mu**2) for pu, mu in real_unc])
 
-    with open('datasets/rapidsim_Kmumu.pkl', 'rb') as f:
+    with open('datasets/rapidsim_Kmumu.pkl', 'rb')as f:
         sim_data = pickle.load(f)
-
     sim_counts, sim_unc, (sim_centers, sim_widths) = dimuon_binning.B_counts_simulation(
         sim_data, plot=False)
 
-    # Since Sim is B+ only, sim_yields is essentially just the B+ count
     sim_yields = np.array([p + m for p, m in sim_counts])
     sim_errors = np.array([np.sqrt(pu**2 + mu**2) for pu, mu in sim_unc])
 
-    # --- Normalization ---
-    # Normalize the B+ simulation to match the TOTAL area of the real data (B+ and B-)
-    # This assumes Detector Symmetry (Efficiency_plus approx Efficiency_total/2 shape)
+    # 2. Normalize Simulation
+    # -----------------------
     if np.sum(sim_yields) > 0:
         scale_factor = np.sum(real_yields) / np.sum(sim_yields)
     else:
@@ -504,46 +504,83 @@ def compare_simulation_to_data():
     sim_yields_scaled = sim_yields * scale_factor
     sim_errors_scaled = sim_errors * scale_factor
 
-    # --- Plotting ---
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True,
-                                   gridspec_kw={'height_ratios': [3, 1]})
+    # 3. Setup Plotting Layout (No Gap)
+    # ---------------------------------
+    fig = plt.figure(figsize=(10, 10))
+    gs = fig.add_gridspec(2, 1, height_ratios=[3, 1], hspace=0.05)
 
-    # Top Panel: Yields
+    ax1 = fig.add_subplot(gs[0])
+    ax2 = fig.add_subplot(gs[1], sharex=ax1)
+
+    # 4. Top Panel: Yield Comparison
+    # ------------------------------
+
+    # A. Plot Simulation as a "Filled Histogram" (using bar)
+    # We use bar width = 2 * half_width
+    ax1.bar(sim_centers, sim_yields_scaled, width=2*sim_widths,
+            color='none', alpha=0.3, edgecolor='black', linewidth=2,
+            label=f'Simulation B+ (Scaled)')
+
+    # Add a "hatched" fill for style (optional)
+    ax1.bar(sim_centers, sim_yields_scaled, width=2*sim_widths,
+            color='none', edgecolor='black', alpha=0.3, hatch='//')
+
+    # B. Plot Real Data as Points
     ax1.errorbar(real_centers, real_yields, xerr=real_widths, yerr=real_errors,
-                 fmt='ko', label='Real Data (Total B+ and B-)', capsize=3)
+                 fmt='ko', markersize=6, elinewidth=2, capsize=3,
+                 label='Real Data (Total)')
 
-    ax1.errorbar(sim_centers, sim_yields_scaled, xerr=sim_widths, yerr=sim_errors_scaled,
-                 fmt='o', color='forestgreen', alpha=0.7,
-                 label=f'Simulation B+ (Scaled x{scale_factor:.2f})', capsize=0)
+    # Formatting Top Panel
+    ax1.set_ylabel('Events / Bin', fontsize=22)
+    ax1.set_title('Data vs. Simulation: Efficiency Comparison',
+                  fontsize=24, pad=15)
 
-    ax1.set_ylabel('Events / Bin')
-    ax1.set_title('Yield Comparison: Real Data vs Simulation (Scaled)')
-    ax1.legend()
+    # Legend with Scientific Notation for Scale Factor
+    # We construct a custom legend label to include the scale factor neatly
+    handles, labels = ax1.get_legend_handles_labels()
+    # Update the simulation label to include the scientific notation number
+    labels[0] = f'Simulation B+ (Scale: {scale_factor:.2e})'
+    ax1.legend(handles, labels, fontsize=16, frameon=True,
+               fancybox=True, loc='upper right')
+
     ax1.grid(True, alpha=0.3)
+    ax1.tick_params(labelbottom=False)  # Hide x-labels on top plot
 
-    # Bottom Panel: Efficiency Ratio (Data / Sim)
-    # Avoid division by zero
+    # 5. Bottom Panel: Ratio Plot
+    # ---------------------------
     valid = sim_yields_scaled > 0
     ratio = np.zeros_like(real_yields)
     ratio_err = np.zeros_like(real_yields)
 
     ratio[valid] = real_yields[valid] / sim_yields_scaled[valid]
 
-    # Error propagation for Ratio R = D / S
-    ratio_err[valid] = ratio[valid] * np.sqrt(
-        (real_errors[valid]/real_yields[valid])**2 +
-        (sim_errors_scaled[valid]/sim_yields_scaled[valid])**2
-    )
+    # Error propagation: (dR/R)^2 = (dN_data/N_data)^2 + (dN_sim/N_sim)^2
+    rel_err_data = real_errors[valid] / real_yields[valid]
+    rel_err_sim = sim_errors_scaled[valid] / sim_yields_scaled[valid]
+    ratio_err[valid] = ratio[valid] * np.sqrt(rel_err_data**2 + rel_err_sim**2)
 
+    # Plot Ratio Points
     ax2.errorbar(real_centers[valid], ratio[valid], xerr=real_widths[valid], yerr=ratio_err[valid],
-                 fmt='ko', capsize=0)
-    ax2.axhline(1.0, color='gray', linestyle='--')
-    ax2.set_ylabel('Ratio (Data / Sim)')
-    ax2.set_xlabel(r'$q^2$ [GeV$^2/c^4$]')
-    ax2.set_ylim(0.0, 2.0)
-    ax2.grid(True, alpha=0.3)
+                 fmt='ko', markersize=5, elinewidth=1.5, capsize=0)
+
+    # Reference Line at 1.0
+    ax2.axhline(1.0, color='gray', linestyle='--', linewidth=2)
+
+    # Shaded band for 10% deviation (visual guide)
+    ax2.axhspan(0.9, 1.1, color='gray', alpha=0.15, label='$\pm$10% agreement')
+
+    ax2.set_ylabel('Ratio\n(Data / Sim)', fontsize=18)
+    ax2.set_xlabel(r'$q^2$ [GeV$^2/c^4$]', fontsize=22)
+
+    # Limit ratio view to reasonable deviations
+    ax2.set_ylim(0.5, 1.5)
+    ax2.set_yticks([0.5, 0.75, 1.0, 1.25, 1.5])
+    ax2.grid(True, alpha=0.5)
 
     plt.tight_layout()
+    # Re-apply hspace adjustment after tight_layout
+    plt.subplots_adjust(hspace=0.05)
+
     plt.show()
 
 
