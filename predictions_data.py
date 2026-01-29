@@ -81,25 +81,35 @@ class BDT_Analysis:
     def __classify_data(self, feature='B invariant mass', hist: bool = False):
         data = self.__run_predictions()
 
-        # optimal_cutoff = self.__find_optimal_cutoff(
-        #     data['signal_probability'], signal_range=(0.6, 1.0))
-        optimal_cutoff = 0.6
+        # Define your signal range here (example: (0.6, 1.0) or use config if available)
+        signal_range = (0.6, 1.0)
+        optimal_cutoff = self.__find_optimal_cutoff(data['signal_probability'], signal_range)
         print(f'Optimal Cutoff Probability: {optimal_cutoff}')
         classified_data = self.__determine_signal(data, optimal_cutoff)
 
         # We histogram the final classified data
         if hist:
+            # Plot original (raw) data filled at the back and the classified signal on top
+            sig_col = '#4C72B0'  # muted blue for signal
+            raw_col = '#F0AD4E'  # softer orange for raw data (filled)
+
+            # Use consistent bin edges for both histograms
+            bins = np.histogram_bin_edges(data[feature].dropna(), bins=80)
+
+            # Raw data (filled, lower alpha) plotted first so it stays behind
+            plt.hist(data[feature], bins=bins, label='Raw Data',
+                    color=raw_col, edgecolor=raw_col, zorder=1)
+
+            # Classified signal (filled) on top for contrast
             plt.hist(classified_data[classified_data['signal'] == 1][feature],
-                     bins=100, alpha=0.5, label='Classified Signal')
-            plt.hist(classified_data[classified_data['signal'] == 0][feature],
-                     bins=100, alpha=0.5, label='Classified Background')
+                    bins=bins, label='Classified Signal',
+                    color=sig_col, edgecolor=sig_col, zorder=2)
             plt.xlabel(r'B candidate mass [MeV/$c^2$]')
             plt.ylabel(r'Candidates')
             plt.yscale('log')
+            plt.title('BDT Ensemble Data Classified by Optimal Cutoff')
             plt.legend()
             plt.show()
-
-        return classified_data
 
     #  - - - - - - - - - - - - - - - - - - - - - - - - - signal cutoff methods - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
@@ -121,41 +131,37 @@ class BDT_Analysis:
         return data
 
     @staticmethod
-    def __cutoff_ratio(data_with_mass, cutoff_val, signal_range):
-        survivors = data_with_mass[data_with_mass['BDT_prob'] >= cutoff_val]
-
-        s_filter = (survivors['B invariant mass'] >= signal_range[0]) & \
-                   (survivors['B invariant mass'] <= signal_range[1])
-        S = len(survivors[s_filter])
-
-        Stot = len(survivors[s_filter])
-
-        if Stot <= 0:
-            return 0
-        return S / np.sqrt(Stot)
+    def __cutoff_ratio(data_series, signal_range):
+        # Filter data_series to values within signal_range
+        filtered = data_series[(data_series >= signal_range[0])
+                               & (data_series <= signal_range[1])]
+        num_sig = len(filtered)  # Count of events in signal range
+        num_sigbck = len(data_series)  # Total events
+        weight = num_sig / np.sqrt(num_sigbck)
+        return weight
 
     @staticmethod
-    def __find_optimal_cutoff(full_df, signal_range):
-        # Assumes full_df has 'BDT_prob' and 'B invariant mass'
-        cutoffs = np.linspace(0, 0.99, 100)
+    def __find_optimal_cutoff(data_series, signal_range):
+        cutoffs = np.linspace(0.1, 0.9, 100)
         weights = []
 
         for cutoff in cutoffs:
-            # Pass the dataframe so we can check both BDT prob and Mass
-            weight = BDT_Analysis.__cutoff_ratio(full_df, cutoff, signal_range)
+            filtered_probs = data_series[data_series >= cutoff]
+            weight = BDT_Analysis.__cutoff_ratio(filtered_probs, signal_range)
             weights.append(weight)
 
         optimal_cutoff = cutoffs[np.argmax(weights)]
+        plot_limit = 89
 
-        # Plotting logic...
-        plt.plot(cutoffs, weights,
-                 label=f'Peak significance: {max(weights):.2f}')
-        plt.axvline(optimal_cutoff, color='red',
+        plt.figure(figsize=(8, 5))
+        plt.plot(cutoffs[:plot_limit], weights[:plot_limit],
+                 label='Figure of Merit Curve', color='black')
+        plt.axvline(optimal_cutoff, color='red', linestyle='--',
                     label=f'Optimum: {optimal_cutoff:.2f}')
         plt.xlabel('Cutoff Probability')
         plt.ylabel(r'$S/\sqrt{S+B}$')
         plt.yscale('log')
-        plt.title('Finding Optimal Cutoff Probability (up to 0.9)')
+        plt.title('FoM Optimal Cutoff Probability')
         plt.legend()
         plt.grid(True, which="both", ls="-", alpha=0.2)
         plt.show()

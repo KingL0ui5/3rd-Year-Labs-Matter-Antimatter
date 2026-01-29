@@ -74,7 +74,7 @@ def compute_b_asymmetry(B_plus_count, B_minus_count, N_plus_uncertainty, N_minus
 
 def compute_asymmetry(data, plot: bool = True):
     n_bins = 15
-    counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins)
+    counts, uncertainties, inv_mass = dimuon_binning.B_counts(data, n_bins, one_bin=True)
 
     asy = []
     for bin_counts, count_uncertainty in zip(counts, uncertainties):
@@ -223,7 +223,7 @@ def rare_decay_asymmetry(data, plot: bool = False):
 
     #  bins on only rare data
     counts, uncertainties, (inv_mass, x_widths) = dimuon_binning.B_counts(
-        rare_data, one_bin=False, plot=True)
+        rare_data, one_bin=True, plot=True)
 
     bin_edges = inv_mass - x_widths, inv_mass + x_widths
 

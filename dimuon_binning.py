@@ -159,20 +159,20 @@ def B_counts(data, plot=False, one_bin=False):
         center = (m_min + m_max) / 2.0
         half_width = (m_max - m_min) / 2.0
 
-        range_str = f"{m_min:.0f}-{m_max:.0f} MeV"
+        range_str = f"{m_min:.0f}-{m_max:.0f} MeV /c$^2$"
 
         # Note: Ensure background_fit_cleaning is available here
         _, n_plus, n_plus_unc = background_fit_cleaning(
             bin_p,
             plotting=plot,
-            plot_title=f'$B^+$ Fit (Bin {i}: {range_str})',
+            plot_title=f'$B^+$ Fit for entire q$^2$ range',
             fold=f'Bplus_bin{i}'
         )
 
         _, n_minus, n_minus_unc = background_fit_cleaning(
             bin_m,
             plotting=plot,
-            plot_title=f'$B^-$ Fit (Bin {i}: {range_str})',
+            plot_title=f'$B^-$ Fit for entire q$^2$ range',
             fold=f'Bminus_bin{i}'
         )
 
@@ -322,19 +322,16 @@ def plot_zfit_results(data, model, obs, b_counts, log_scale=False, plot_title='F
 
     # Data Points (Zero-suppressed)
     mask = counts > 0
-    ax_main.errorbar(bin_centers[mask], counts[mask], yerr=y_err[mask], fmt='ko',
-                     markersize=6, capsize=0, elinewidth=1.5, label='Data', zorder=10)
-
-    x_peak = bin_centers[counts.argmax()]
-    y_peak = counts.max()
+    ax_main.errorbar(bin_centers[mask], counts[mask], yerr=y_err[mask], xerr=bin_width/2, fmt='ko',
+                     markersize=6.5, capsize=0, elinewidth=1.5, label='Data', zorder=10)
 
     if b_counts > 0:
-        textstr = f'B Count: {b_counts:.0f}'
-        props = dict(boxstyle='round', facecolor='white',
-                     alpha=0.8, edgecolor='black')
-
-        ax_main.text(x_peak * 1.05, y_peak * 1.05, textstr,
-                     verticalalignment='bottom', horizontalalignment='center', bbox=props)
+        textstr = f'Yield: {b_counts:.0f}'
+        props = dict(boxstyle='round', facecolor='lightgray',
+                     alpha=0.5, edgecolor='gray')
+        ax_main.text(0.98, 0.88, textstr,
+                     transform=ax_main.transAxes,
+                     verticalalignment='top', horizontalalignment='right', bbox=props)
 
     # --- PULL PLOT ---
     # 1. Calculate the fit value at each bin center
@@ -353,12 +350,12 @@ def plot_zfit_results(data, model, obs, b_counts, log_scale=False, plot_title='F
                          2, color='gray', alpha=0.1)  # 2-sigma band
 
     # Formatting
-    ax_main.set_title(plot_title, fontsize=20, pad=15)
-    ax_main.set_ylabel(f'Events / ({bin_width:.1f} MeV/$c^2$)', fontsize=16)
-    ax_main.legend(fontsize=14, frameon=True)
+    ax_main.set_title(plot_title, pad=15)
+    ax_main.set_ylabel(f'Events / ({bin_width:.1f} MeV/$c^2$)')
+    ax_main.legend(frameon=True)
 
-    ax_pull.set_xlabel(r'B candidate mass [MeV/$c^2$]', fontsize=16)
-    ax_pull.set_ylabel('Pull', fontsize=16)
+    ax_pull.set_xlabel(r'B candidate mass [MeV/$c^2$]')
+    ax_pull.set_ylabel('Pull')
     ax_pull.set_ylim(-5, 5)  # Pulls usually live between -3 and 3
     ax_pull.set_yticks([-3, 0, 3])
 

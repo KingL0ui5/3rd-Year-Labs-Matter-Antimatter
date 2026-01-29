@@ -14,7 +14,7 @@ important_cols = ['B transverse momentum', 'Kaon transverse momentum',
                   'Dimuon parameter chi2', 'Mu flight distance significance',
                   'Kaon muon minimum impact parameter chi2', 'B cos(theta) angle momentum frame']
 
-drop_cols_old = [
+drop_cols = [
     'B decay vertex x position', 'B decay vertex y position', 'B decay vertex z position',
     'B impact parameter wrt primary vertex', 'B flight distance wrt primary vertex',
     'B magnitude of momentum', 'B 4-momentum energy component', 'B 4-momentum x component',
