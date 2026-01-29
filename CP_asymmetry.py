@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 sns.set_style('darkgrid')
-sns.set_context('talk')
+sns.set_context('talk', font_scale=1.2)
 
 
 # %% Data Loading Functions
@@ -114,7 +114,7 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
     """
     delta_A, delta_A_unc = compute_combined_calibration(data, plot=plot)
     counts, uncertainties, inv_mass = dimuon_binning.B_counts(
-        data, n_bins, plot=True)
+        data, one_bin=True, plot=True)
 
     corrected_asy = []
     for bin_counts, bin_unc in zip(counts, uncertainties):
@@ -160,6 +160,7 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
                     label='SM Expectation ($A_{CP}=0$)')
         ax2.axhspan(-delta_A_unc, delta_A_unc, color='blue',
                     alpha=0.1, label='Calibration Precision')
+        ax2.vlines()
 
         ax2.set_xlabel('Dimuon Invariant Mass [MeV]')
         ax2.set_ylabel('Corrected CP Asymmetry')
@@ -177,10 +178,13 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     Slices peaks out first, bins the remainder, and handles fit failures.
     Plots the spliced mass spectrum and the resulting CP asymmetry.
     """
-    is_jpsi = (data['dimuon-system invariant mass'] >= 2946) & \
-              (data['dimuon-system invariant mass'] <= 3176)
-    is_psi2s = (data['dimuon-system invariant mass'] >= 3586) & \
-               (data['dimuon-system invariant mass'] <= 3776)
+    jpsi_low, jpsi_high = 2946, 3176
+    psi2s_low, psi2s_high = 3586, 3776
+
+    is_jpsi = (data['dimuon-system invariant mass'] >= jpsi_low) & \
+              (data['dimuon-system invariant mass'] <= jpsi_high)
+    is_psi2s = (data['dimuon-system invariant mass'] >= psi2s_low) & \
+               (data['dimuon-system invariant mass'] <= psi2s_high)
 
     print(len(data[is_jpsi]), "events in resonance regions.")
 
@@ -198,14 +202,17 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     delta_A, delta_A_unc = compute_combined_calibration(data, plot=False)
 
     #  bins on only rare data
-    counts, uncertainties, inv_mass = dimuon_binning.B_counts(
-        rare_data, n_bins, plot=True)
+    counts, uncertainties, (inv_mass, x_widths) = dimuon_binning.B_counts(
+        rare_data, one_bin=False, plot=True)
+
+    bin_edges = inv_mass - x_widths, inv_mass + x_widths
 
     corrected_asy = []
     rare_vals = []
     # weighted values for integration
     rare_weights = []
     valid_masses = []
+    valid_widths = []
 
     print(len(counts), "nbins for rare data.")
     for i in range(len(counts)):
@@ -225,6 +232,7 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
 
         corrected_asy.append((val_corr, err_corr))
         valid_masses.append(inv_mass[i])
+        valid_widths.append(x_widths[i])
 
         w = 1.0 / (err_corr**2)
         rare_vals.append(val_corr * w)
@@ -243,42 +251,56 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
 
     if plot:
         # Create a two-panel vertical plot
-        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True)
+        fig, ax = plt.subplots(figsize=(10, 10), sharex=True)
 
         # --- Top Plot: Spliced Histogram ---
-        ax1.hist(rare_data['dimuon-system invariant mass'], bins=150,
-                 color='steelblue', alpha=0.6, log=True, label='Spliced Data (Rare Only)')
+        ax.hist(rare_data['dimuon-system invariant mass'], bins=150,
+                color='steelblue', alpha=0.6, log=True, label='Spliced Data (Rare Only)')
 
         # Show where the bins are
-        ax1.vlines(inv_mass, ymin=0, ymax=10e5, colors='red',
-                   linestyles='--', alpha=0.3, label='Rare Bin Edges')
+        ax.vlines(bin_edges[0], ymin=0, ymax=10e5, colors='red',
+                  linestyles='--', alpha=0.3, label='Bin Edges')
+        ax.vlines(bin_edges[1], ymin=0, ymax=10e5, colors='red',
+                  linestyles='--', alpha=0.3)
 
-        ax1.set_ylabel('Yield (Log Scale)')
-        ax1.set_title('Dimuon Invariant Mass (Resonances Removed)')
-        ax1.legend(loc='upper right')
+        ax.set_ylabel('Yield (Log Scale)')
+        ax.set_title('Dimuon Invariant Mass (Resonances Removed)')
+        ax.legend(loc='upper right')
 
         # --- Bottom Plot: Corrected Asymmetry ---
         print("plotting corrected asymmetry...")
         y_points = [v[0] for v in corrected_asy]
         y_errors = [v[1] for v in corrected_asy]
 
-        ax2.errorbar(valid_masses, y_points, yerr=y_errors,
+        fig, ax2 = plt.subplots(figsize=(10, 6))
+
+        ax2.errorbar(valid_masses, y_points,
+                     xerr=valid_widths,  # Add horizontal bars
+                     yerr=y_errors,
                      fmt='ko', capsize=3, label='Calibrated $A_{CP}$')
 
         # Reference lines
-        ax2.axhline(0, color='red', linestyle='--', alpha=0.6,
-                    label='SM Expectation ($A_{CP}=0$)')
+        ax2.axhline(0, color='red', linestyle='--', alpha=0.6)
         ax2.axhspan(-delta_A_unc, delta_A_unc, color='blue',
-                    alpha=0.1, label='Calibration Precision')
+                    alpha=0.1, label='Calib. Unc.')
 
-        # Integrated value line
+        # Integrated value
         ax2.axhline(integrated_asy, color='green', linestyle=':', linewidth=2,
-                    label=f'Global Rare Average: {integrated_asy:.4f}')
+                    label=f'Avg: {integrated_asy:.4f}')
+
+        # --- NEW: Charmonium Resonance Lines ---
+        # J/psi at ~3096 MeV, Psi(2S) at ~3686 MeV
+        ax2.axvspan(jpsi_low, jpsi_high, color='gray',
+                    alpha=0.3, label=r'$J/\psi$ Veto')
+        ax2.axvspan(psi2s_low, psi2s_high, color='gray',
+                    alpha=0.3, label=r'$\psi(2S)$ Veto')
 
         ax2.set_ylabel('Corrected CP Asymmetry')
         ax2.set_xlabel('Dimuon Invariant Mass [MeV]')
         ax2.set_ylim(-0.25, 0.25)
-        ax2.legend(loc='upper right')
+        # 2 columns to fit resonance labels
+        ax2.legend(loc='upper right', ncol=2)
+        ax2.set_title('Corrected CP Asymmetry vs $q^2$')
 
         plt.tight_layout()
         plt.show()
@@ -302,7 +324,7 @@ def compute_combined_calibration(data, plot: bool = False):
     combined_peak_data = data[is_jpsi | is_psi2s]
 
     counts, uncertainties, _ = dimuon_binning.B_counts(
-        combined_peak_data, n_bins=1)
+        combined_peak_data, one_bin=True, plot=plot)
     #  get counts for single bin
 
     # Calculate the calibration values
@@ -380,6 +402,8 @@ def filter_misidentified_background(data):
         2500, 3500), label='After Veto', alpha=0.5)
     plt.axvline(M_JPSI, color='red', linestyle='--', label='J/psi Mass')
     plt.title("Swapped Mass Hypothesis (Kaon treated as Muon)")
+    plt.xlabel(r'$K^+\mu^-$ Invariant Mass [MeV/$c^2$]')
+    plt.ylabel('Candidates')
     plt.legend()
     plt.show()
 

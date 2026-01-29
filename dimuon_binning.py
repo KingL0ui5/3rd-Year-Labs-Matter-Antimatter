@@ -1,4 +1,5 @@
 
+# Ensure circular import is handled or this function is defined
 import pickle
 import pandas as pd
 import config
@@ -9,61 +10,67 @@ import numpy as np
 os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '0'
 
 
-def bin_data(data, plot=False):
+def bin_data(data, plot=False, one_bin=False):
     """
-    Splits the data into specific q^2 bins defined in the uploaded table.
+    Splits the data into specific q^2 bins, SKIPPING resonance gaps 
+    and extending to the kinematic limit.
     """
-    mass_col = 'dimuon-system invariant mass'
+    if 'q2_GeV' not in data.columns:
+        data['q2_GeV'] = (data['dimuon-system invariant mass'] / 1000.0)**2
 
-    bin_ranges = [
-        (0.05, 2.00),
-        (2.00, 4.30),
-        (4.30, 8.68),
-        (10.09, 12.86),
-        (14.18, 16.00),
-        (16.00, 18.00),
-        (18.00, 22.00)
-    ]
+    mass_col = 'q2_GeV'
+
+    if one_bin:
+        # Full range covering the entire signal
+        bin_ranges = [(0.05, 25.00)]
+    else:
+        # Define Discontinuous Ranges (Tuples)
+        # We explicitly SKIP the gaps (8.68-10.09) and (12.86-14.18)
+        bin_ranges = [
+            (0.05, 2.00),
+            (2.00, 4.30),
+            (4.30, 8.68),
+            # J/psi GAP SKIPPED
+            (10.09, 12.86),
+            # psi(2S) GAP SKIPPED
+            (14.18, 16.00),
+            (16.00, 18.00),
+            (18.00, 25.00)  # Extended to 25.00 to capture high-mass tail
+        ]
 
     binned_data = []
+    ranges_MeV = []
     bin_labels = []
 
     for low, high in bin_ranges:
-        mask = (data[mass_col] >= low) & (data[mass_col] < high)
-        bin_df = data[mask].copy()
-        binned_data.append(bin_df)
-        bin_labels.append(f'{low} - {high}')
+        mask = (data['q2_GeV'] >= low) & (data['q2_GeV'] < high)
+        binned_data.append(data[mask].copy())
+
+        # Convert q2 edges to MeV for plotting
+        min_mev = np.sqrt(low) * 1000
+        max_mev = np.sqrt(high) * 1000
+        ranges_MeV.append((min_mev, max_mev))
+
+        bin_labels.append(f"{low}-{high}")
 
     if plot:
         n_bins = len(binned_data)
         plt.figure(figsize=(12, 7))
-
         colors = plt.cm.nipy_spectral(np.linspace(0, 0.95, n_bins))
-
         plot_data = [df[mass_col] for df in binned_data]
 
-        plt.hist(plot_data,
-                 bins=300,
-                 stacked=True,
-                 color=colors,
-                 label=bin_labels,
-                 edgecolor='black',
-                 linewidth=0.5,
-                 alpha=0.8)
+        plt.hist(plot_data, bins=300, stacked=True, color=colors,
+                 label=bin_labels, edgecolor='black', linewidth=0.5, alpha=0.8)
 
         plt.xlabel(r'$q^2$ [GeV$^2/c^4$]', fontsize=12)
         plt.ylabel('Events (Log Scale)', fontsize=12)
         plt.yscale('log')
         plt.title('Data Partitioned into Specific $q^2$ Bins', fontsize=14)
-
-        plt.grid(True, which="both", ls="-", alpha=0.2)
-
         plt.legend(title="$q^2$ Bins", frameon=True, loc='upper right')
-
         plt.tight_layout()
         plt.show()
 
-    return binned_data
+    return binned_data, ranges_MeV
 
 
 def split_Bs(data):
@@ -82,60 +89,60 @@ def split_Bs(data):
     return B_plus, B_minus
 
 
-def B_counts(data, n_bins, plot=False):
+def B_counts(data, plot=False, one_bin=False):
     """
-    Returns the number of B+ and B- mesons in the dataset.
-    Updated to pass dynamic titles for binned mass spectrum plots.
+    Returns counts, uncertainties, and (centers, half_widths) for plotting.
     """
     B_plus, B_minus = split_Bs(data)
 
-    # We set plot=False here because we want the individual ZFit plots,
-    # not the stacked binning histogram every time.
-    binned_B_plus = bin_data(B_plus, n_bins=n_bins, plot=False)
-    binned_B_minus = bin_data(B_minus, n_bins=n_bins, plot=False)
-
-    bin_edges = np.linspace(min(data['dimuon-system invariant mass']),
-                            max(data['dimuon-system invariant mass']),
-                            n_bins + 1)
-    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    # Get dataframes and ranges (tuples)
+    binned_B_plus, ranges_MeV = bin_data(B_plus, plot=plot, one_bin=one_bin)
+    binned_B_minus, _ = bin_data(B_minus, plot=plot, one_bin=one_bin)
 
     counts = []
-    uncertaintes = []
-    bin_vals = []
+    uncertainties = []
 
-    for i, (bin_p, bin_m) in enumerate(zip(binned_B_plus, binned_B_minus)):
-        # Define the mass range string for the titles
-        m_min, m_max = bin_edges[i], bin_edges[i+1]
+    bin_centers = []
+    bin_half_widths = []
+
+    # ZIP safely iterates over the Valid Bins only
+    for i, (bin_p, bin_m, (m_min, m_max)) in enumerate(zip(binned_B_plus, binned_B_minus, ranges_MeV)):
+
+        # Calculate center/width from the tuple directly
+        center = (m_min + m_max) / 2.0
+        half_width = (m_max - m_min) / 2.0
+
         range_str = f"{m_min:.0f}-{m_max:.0f} MeV"
 
-        # Call background_fit_cleaning with dynamic titles
-        # This will flow into plot_zfit_results
+        # Note: Ensure background_fit_cleaning is available here
         _, n_plus, n_plus_unc = background_fit_cleaning(
             bin_p,
             plotting=plot,
-            plot_title=f'B+ Fit (Dimuon Bin {i}: {range_str})',
+            plot_title=f'$B^+$ Fit (Bin {i}: {range_str})',
             fold=f'Bplus_bin{i}'
         )
 
         _, n_minus, n_minus_unc = background_fit_cleaning(
             bin_m,
             plotting=plot,
-            plot_title=f'B- Fit (Dimuon Bin {i}: {range_str})',
+            plot_title=f'$B^-$ Fit (Bin {i}: {range_str})',
             fold=f'Bminus_bin{i}'
         )
 
         print(f"Bin {i} ({range_str}): B+={n_plus:.1f}, B-={n_minus:.1f}")
 
-        # Safety check for empty or failed bins
+        # Basic safety check
         if np.isclose(n_plus, 0, atol=0.01) or np.isclose(n_minus, 0, atol=0.01):
             print(f"Skipping Bin {i} due to insufficient signal.")
             continue
 
         counts.append((n_plus, n_minus))
-        uncertaintes.append((n_plus_unc, n_minus_unc))
-        bin_vals.append(bin_centers[i])
+        uncertainties.append((n_plus_unc, n_minus_unc))
 
-    return counts, uncertaintes, np.array(bin_vals)
+        bin_centers.append(center)
+        bin_half_widths.append(half_width)
+
+    return counts, uncertainties, (np.array(bin_centers), np.array(bin_half_widths))
 
 
 def crystal_ball(x, x0, sigma, alpha, n, N):
@@ -232,7 +239,7 @@ def background_fit_cleaning(data, plotting=True, plot_title='Fit Result: B Invar
     return data, sig_val, sig_err
 
 
-def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all'):
+def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all', b_counts=10):
     lower, upper = obs.limit1d
     n_bins = 100
     x_plot = np.linspace(lower, upper, 1000)
