@@ -1,3 +1,8 @@
+"""
+Plot the top ten features correlated with each target variable on the same axes.
+Fixed: Legend blocking data and title cutoff.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.feature_selection import mutual_info_regression
@@ -5,23 +10,14 @@ import pandas as pd
 import seaborn as sns
 import textwrap
 
-sns.set_style('whitegrid')
-sns.set_context('talk')
+sns.set_style('darkgrid')
+sns.set_context('talk', font_scale=2)
 
 
-def calculate_and_plot_correlations(target, data, metric='Spearman', top_n=10, sample_size=20000):
-    """
-    Calculates a SINGLE correlation metric with 'target' and plots it.
+def calculate_and_plot_correlations(targets, data, metric='Spearman', top_n=7, sample_size=20000):
 
-    Parameters:
-    -----------
-    target : str
-        The target column name.
-    data : pd.DataFrame
-        The dataframe.
-    metric : str
-        One of ['Pearson', 'Spearman', 'Mutual Info'].
-    """
+    if isinstance(targets, str):
+        targets = [targets]
 
     if len(data) > sample_size:
         print(f"Sampling {sample_size} events for speed...")
@@ -30,65 +26,109 @@ def calculate_and_plot_correlations(target, data, metric='Spearman', top_n=10, s
         calc_data = data
 
     numeric_df = calc_data.select_dtypes(include=[np.number]).dropna()
+    X = numeric_df.drop(columns=targets)
 
-    if target not in numeric_df.columns:
-        raise ValueError(f"Target '{target}' not found in numeric columns.")
+    all_results = []
 
-    X = numeric_df.drop(columns=[target])
-    y = numeric_df[target]
+    for target in targets:
+        print(f"Calculating {metric} correlation with {target}...")
+        y = numeric_df[target]
 
-    print(f"Calculating {metric} correlation with {target}...")
+        if metric == 'Pearson':
+            scores = X.corrwith(y, method='pearson').abs()
+        elif metric == 'Spearman':
+            scores = X.corrwith(y, method='spearman').abs()
+        elif metric == 'Mutual Info':
+            mi_scores = mutual_info_regression(X, y, random_state=42)
+            scores = pd.Series(mi_scores, index=X.columns)
+            if scores.max() > 0:
+                scores = scores / scores.max()
 
-    if metric == 'Pearson':
-        scores = X.corrwith(y, method='pearson').abs()
-    elif metric == 'Spearman':
-        scores = X.corrwith(y, method='spearman').abs()
-    elif metric == 'Mutual Info':
-        mi_scores = mutual_info_regression(X, y, random_state=42)
-        scores = pd.Series(mi_scores, index=X.columns)
-        scores = scores / scores.max()
-    else:
-        raise ValueError(
-            "Metric must be 'Pearson', 'Spearman', or 'Mutual Info'")
+        temp_df = pd.DataFrame({
+            'Feature': scores.index,
+            'Score': scores.values,
+            'Target': target
+        })
+        all_results.append(temp_df)
 
-    results = pd.DataFrame({metric: scores})
-    top_results = results.sort_values(by=metric, ascending=False).head(top_n)
+    combined_df = pd.concat(all_results, ignore_index=True)
 
-    top_results['Label'] = [
-        '\n'.join(textwrap.wrap(name, width=40)) for name in top_results.index
-    ]
+    # --- UNION SELECTION LOGIC ---
+    features_to_keep = set()
+    for target in targets:
+        target_top = combined_df[combined_df['Target']
+                                 == target].nlargest(top_n, 'Score')
+        features_to_keep.update(target_top['Feature'].tolist())
 
-    plt.figure(figsize=(10, len(top_results) * 0.8 + 2))
+    plot_df = combined_df[combined_df['Feature'].isin(features_to_keep)].copy()
 
-    barplot = sns.barplot(
-        data=top_results,
-        x=metric,
+    print(f"Plotting {len(features_to_keep)} unique features...")
+
+    # Wrap labels
+    plot_df['Label'] = plot_df['Feature'].apply(
+        lambda x: '\n'.join(textwrap.wrap(x, width=40))
+    )
+
+    feature_order = plot_df.groupby(
+        'Feature')['Score'].max().sort_values(ascending=False).index
+    plot_df['Feature_Rank'] = pd.Categorical(
+        plot_df['Feature'], categories=feature_order, ordered=True)
+    plot_df = plot_df.sort_values('Feature_Rank')
+    y_order = plot_df.drop_duplicates(
+        'Label').sort_values('Feature_Rank')['Label']
+
+    # --- PLOTTING ---
+    # Increased width to 14 to help labels fit
+    plt.figure(figsize=(14, len(features_to_keep) * 1.0 + 3))
+
+    sns.barplot(
+        data=plot_df,
+        x='Score',
         y='Label',
+        hue='Target',
+        order=y_order,
         palette='viridis',
-        hue=metric,      # Color by intensity
-        legend=False     # Hide legend (color bar is self-explanatory)
+        edgecolor='white'
     )
 
     plt.title(
-        f'Top {top_n} Features by {metric} Correlation\n(Target: {target})', fontsize=16, pad=20)
-    plt.xlabel('Correlation Magnitude', fontsize=14)
+        f'Union of Top {top_n} Feature Correlations', fontsize=25, pad=20)
+    plt.xlabel(f"{metric} Score", fontsize=30)
     plt.ylabel('')
+    plt.grid(axis='x', linestyle='--', alpha=0.6)
+    plt.tick_params(axis='y', labelsize=25)
 
-    for i, container in enumerate(barplot.containers):
-        barplot.bar_label(container, fmt='%.2f', padding=5)
+    # --- FIX 1: EXTEND X-AXIS FOR LEGEND SPACE ---
+    # Get current x-limit and extend it by 40% to make room on the right
+    current_xmax = plot_df['Score'].max()
+    plt.xlim(0, current_xmax * 1.4)
 
-    plt.xlim(0, 1.15)  # Add room for labels
+    # --- FIX 2: LEGEND PLACEMENT ---
+    plt.legend(
+        title='Target',
+        loc='lower right',    # Bottom right inside the plot
+        fontsize=18,
+        title_fontsize=20,
+        frameon=True,
+        framealpha=0.95,      # Opaque background
+        edgecolor='gray'
+    )
+
+    # --- FIX 3: PREVENT TITLE CUTOFF ---
     plt.tight_layout()
+    # Add a little extra margin at the top AFTER tight_layout
+    plt.subplots_adjust(top=0.93)
+
     plt.show()
 
-    return top_results
+    return plot_df
 
 
 if __name__ == "__main__":
-
     import filtered_data
     import config
+
     data = filtered_data.load_dataset(dataset=config.dataset)
-    calculate_and_plot_correlations('B invariant mass', data, top_n=10)
+
     calculate_and_plot_correlations(
-        'dimuon-system invariant mass', data, top_n=10)
+        ['B invariant mass', 'dimuon-system invariant mass'], data, top_n=5)

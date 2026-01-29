@@ -123,9 +123,7 @@ for i in range(k):
         f"  AUC: {auc:.4f} | KS Score (Sig): {ks_stat_sig:.3f} (p={ks_pval_sig:.3f})")
 
     if detail:
-        fig1, axes = plt.subplots(1, 2, figsize=(16, 6))
-
-        ax_hist = axes[0]
+        fig1, ax_hist = plt.subplots(figsize=(16, 6))
 
         # Plot Train (Solid/Step) vs Test (Errorbar/Points)
 
@@ -144,11 +142,12 @@ for i in range(k):
         ax_hist.set_title(
             f'Classifications Test vs Train (KS p-val: {ks_pval_sig:.2f})')
         ax_hist.set_xlabel('Signal Probability')
-        ax_hist.set_ylabel('Normalized Density')
+        ax_hist.set_ylabel('Normalised Density')
         ax_hist.legend()
 
         # ROC Curve
-        ax_roc = axes[1]
+        fig2, ax_roc = plt.subplots(figsize=(8, 6))
+
         fpr, tpr, _ = roc_curve(y_test_k, pred_test)
 
         ax_roc.plot(fpr, tpr, label=f'AUC = {auc:.3f}', linewidth=2)

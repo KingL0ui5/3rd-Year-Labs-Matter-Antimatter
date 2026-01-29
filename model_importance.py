@@ -1,6 +1,6 @@
 """
 Plot feature importances and ROC stability from trained XGBoost models across k folds.
-Updated 28/01
+Updated to match Correlation Plot style.
 """
 import glob
 import pickle
@@ -9,13 +9,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import textwrap  # <--- Added to handle text wrapping
+import textwrap
 from sklearn.metrics import roc_curve, auc
 import config
 import filtered_data
 
+# --- STYLE UPDATE: Match Correlation Plot ---
 sns.set_style('darkgrid')
-sns.set_context('talk', font_scale=1.5)
+sns.set_context('talk', font_scale=2)  # Increased scale
 
 dataset = config.dataset
 k = config.k
@@ -69,18 +70,17 @@ for i in range(k):
 
 df_imp = pd.DataFrame(all_importances)
 
-# --- MODIFICATION START ---
-# Wrap text to approx 15-20 characters to force a split across lines
-# Adjust 'width' if your specific feature names need a different break point
+# Wrap text to approx 40 characters (same as correlation plot)
 df_imp['Feature'] = df_imp['Feature'].apply(
-    lambda x: textwrap.fill(x, width=20))
-# --- MODIFICATION END ---
+    lambda x: '\n'.join(textwrap.wrap(x, width=40)))
 
-# Re-calculate order using the NEW (wrapped) feature names
 order = df_imp.groupby('Feature')['Importance'].mean(
 ).sort_values(ascending=False).index[:10]
 
-plt.figure(figsize=(12, 8))
+# --- PLOT 1: FEATURE IMPORTANCE ---
+# Increased size to handle large fonts
+plt.figure(figsize=(14, 12))
+
 sns.barplot(
     data=df_imp,
     x='Importance',
@@ -89,37 +89,46 @@ sns.barplot(
     errorbar='sd',
     palette='viridis',
     estimator=np.mean,
-    err_kws={'color': 'crimson', 'linewidth': 2.5}
+    edgecolor='white',  # Clean edges like correlation plot
+    # Thicker error bars for visibility
+    err_kws={'color': 'crimson', 'linewidth': 3}
 )
-plt.title(
-    f'Feature Importance Stability (Mean $\pm$ Std Dev across {k} folds)')
-plt.xlabel('Average Gain (Separation Power)')
-# Increase font size slightly for readability if lines are split
-plt.tick_params(axis='y', labelsize=11)
+
+plt.title(f'Feature Importance Stability (k={k})',
+          fontsize=25, pad=20)
+plt.xlabel('Average Gain (Separation Power)', fontsize=25)
+plt.ylabel('')  # Remove y-label
+
+# Explicitly set tick size
+plt.tick_params(axis='y', labelsize=20)
+plt.tick_params(axis='x', labelsize=20)
+
 plt.tight_layout()
 plt.show()
 
-plt.figure(figsize=(10, 8))
+
+# --- PLOT 2: ROC CURVE ---
+plt.figure(figsize=(12, 10))
 
 mean_tpr = np.mean(tprs, axis=0)
 mean_tpr[-1] = 1.0
 std_tpr = np.std(tprs, axis=0)
 
 plt.plot(mean_fpr, mean_tpr, color='b', label=r'Mean ROC (AUC = %0.3f $\pm$ %0.3f)' %
-         (np.mean(aucs), np.std(aucs)), lw=2, alpha=.8)
+         (np.mean(aucs), np.std(aucs)), lw=3, alpha=.8)
 
 tprs_upper = np.minimum(mean_tpr + std_tpr, 1)
 tprs_lower = np.maximum(mean_tpr - std_tpr, 0)
 plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
                  label=r'$\pm$ 1 std. dev.')
 
-plt.plot([0, 1], [0, 1], linestyle='--', lw=2,
+plt.plot([0, 1], [0, 1], linestyle='--', lw=3,
          color='r', label='Random', alpha=.8)
 
-plt.xlabel('False Positive Rate (Background Efficiency)')
-plt.ylabel('True Positive Rate (Signal Efficiency)')
-plt.title(f'ROC Curve Stability ({k}-Fold Cross-Validation)')
-plt.legend(loc="lower right")
+plt.xlabel('False Positive Rate', fontsize=25)
+plt.ylabel('True Positive Rate', fontsize=25)
+plt.title(f'ROC Stability ({k}-Fold CV)', fontsize=30, pad=20)
+plt.legend(loc="lower right", fontsize=18)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.show()
