@@ -90,6 +90,52 @@ def split_Bs(data):
     return B_plus, B_minus
 
 
+def B_counts_simulation(data, plot=False, one_bin=False):
+    """
+    For SIMULATION (B+ Only): Splits into B+/B- and counts events.
+    Since the dataset is B+ only, we expect B- counts to be zero.
+    """
+    B_plus, B_minus = split_Bs(data)
+
+    # Use same binning logic as real data
+    binned_B_plus, ranges_MeV = bin_data(B_plus, plot=False, one_bin=one_bin)
+
+    # We still bin B_minus to maintain the parallel list structure,
+    # even though we expect it to be empty.
+    binned_B_minus, _ = bin_data(B_minus, plot=False, one_bin=one_bin)
+
+    counts = []
+    uncertainties = []
+    bin_centers = []
+    bin_half_widths = []
+
+    print("--- Counting Simulation Events (B+ Only) ---")
+    for i, (bin_p, bin_m, (m_min, m_max)) in enumerate(zip(binned_B_plus, binned_B_minus, ranges_MeV)):
+
+        # Count events (B+ should have counts, B- should be 0)
+        n_plus = len(bin_p)
+        n_minus = len(bin_m)
+
+        # Poisson error (Standard Deviation = sqrt(N))
+        n_plus_unc = np.sqrt(n_plus) if n_plus > 0 else 0
+        n_minus_unc = np.sqrt(n_minus) if n_minus > 0 else 0
+
+        range_str = f"{m_min:.0f}-{m_max:.0f} MeV"
+        # Print info, but don't warn about zero B- since that is expected
+        print(f"Sim Bin {i} ({range_str}): B+={n_plus}, B-={n_minus}")
+
+        counts.append((n_plus, n_minus))
+        uncertainties.append((n_plus_unc, n_minus_unc))
+
+        # Geometric center for plotting
+        low_gev2 = (m_min / 1000)**2
+        high_gev2 = (m_max / 1000)**2
+        bin_centers.append((low_gev2 + high_gev2) / 2.0)
+        bin_half_widths.append((high_gev2 - low_gev2) / 2.0)
+
+    return counts, uncertainties, (np.array(bin_centers), np.array(bin_half_widths))
+
+
 def B_counts(data, plot=False, one_bin=False):
     """
     Returns counts, uncertainties, and (centers, half_widths) for plotting.

@@ -17,18 +17,6 @@ sns.set_context('talk', font_scale=1.5)
 sns.set_palette("colorblind")
 
 
-def load_simulation_data():
-    """
-    Load pure signal simulation dataset.
-    """
-
-    with open('datasets/rapidsim_Kmumu.pkl', 'rb') as infile:
-        simulation_data = pickle.load(infile)
-
-    # print('\n'.join(simulation_data.keys()))
-    return simulation_data
-
-
 def load_samesign():
     """
     Load the full 2011 dataset.
@@ -112,7 +100,8 @@ class seperate:
         background = dataset[is_background]
 
         if plot is True:
-            fig, ax = plt.subplots(2, 1, figsize=(10, 6), sharex=False, layout="constrained")
+            fig, ax = plt.subplots(2, 1, figsize=(
+                10, 6), sharex=False, layout="constrained")
             col_name = 'dimuon-system invariant mass'
             x_min = dataset[col_name].min()
             x_max = dataset[col_name].max()
@@ -169,7 +158,8 @@ class seperate:
             plt.show()
 
             # For the background and signal histograms below, get bin width from np.histogram
-            n_bkg_hist, bins_bkg_hist = np.histogram(background['dimuon-system invariant mass'], bins=100)
+            n_bkg_hist, bins_bkg_hist = np.histogram(
+                background['dimuon-system invariant mass'], bins=100)
             bin_width_bkg = bins_bkg_hist[1] - bins_bkg_hist[0]
             background.hist(column='dimuon-system invariant mass', bins=100)
             plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')
@@ -178,7 +168,8 @@ class seperate:
             plt.yscale('log')
             plt.show()
 
-            n_sig_hist, bins_sig_hist = np.histogram(signal['B invariant mass'], bins=100)
+            n_sig_hist, bins_sig_hist = np.histogram(
+                signal['B invariant mass'], bins=100)
             bin_width_sig = bins_sig_hist[1] - bins_sig_hist[0]
             signal.hist(column='B invariant mass', bins=100)
             plt.xlabel(r'Dimuon invariant mass / MeV/$c^2$')

@@ -3,6 +3,7 @@ Count the number of B mesons in the dataset, and seperate them into B+ and B- me
 20/01 - created
 """
 
+import pandas as pd
 import pickle
 import math
 import config
@@ -48,6 +49,7 @@ def __load_signal_data(dataset):
         ax[1].set_ylabel('Counts (Log Scale)')
         ax[1].set_xlabel('B Invariant Mass [MeV]')
         plt.show()
+
     return cleaned_data
 
 
@@ -171,7 +173,7 @@ def asymmetry_calibrated(data, n_bins=10, plot: bool = False):
     return corrected_asy, inv_mass
 
 
-def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
+def rare_decay_asymmetry(data, plot: bool = False):
     """
     Slices peaks out first, bins the remainder, and handles fit failures.
     Plots the spliced mass spectrum and the resulting CP asymmetry.
@@ -184,9 +186,29 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     is_psi2s = (data['dimuon-system invariant mass'] >= psi2s_low) & \
                (data['dimuon-system invariant mass'] <= psi2s_high)
 
-    print(len(data[is_jpsi]), "events in resonance regions.")
-
     partially_reconstructed = data['B invariant mass'] < 5170
+
+    bin_edges = np.linspace(data['B invariant mass'].min(),
+                            data['B invariant mass'].max(),
+                            100)  # 100 bins total
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    ax.hist(data[partially_reconstructed]['B invariant mass'], bins=bin_edges,
+            color='red', alpha=1.0, label='Partially Reconstructed BG')
+
+    ax.hist(data[~partially_reconstructed]['B invariant mass'], bins=bin_edges,
+            color='green', alpha=1.0, label='Signal Region')
+
+    plt.title('Partially Reconstructed Background Removal')
+    plt.xlabel(r'B Invariant Mass [MeV/$c^2$]')
+    bin_width = (data['B invariant mass'].max() -
+                 data['B invariant mass'].min()) / 100
+
+    plt.ylabel(f'Candidates / ({bin_width:.1f} MeV/$c^2$)')
+    plt.yscale('log')
+    plt.legend()
+    plt.show()
 
     rare_data = data[~(is_jpsi | is_psi2s | partially_reconstructed)]
 
@@ -197,7 +219,7 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
     #  filter partially reconstructed background too
 
     #  compute calibration shift
-    delta_A, delta_A_unc = compute_combined_calibration(data, plot=False)
+    delta_A, delta_A_unc = compute_combined_calibration(data, plot=True)
 
     #  bins on only rare data
     counts, uncertainties, (inv_mass, x_widths) = dimuon_binning.B_counts(
@@ -302,6 +324,7 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
         plt.show()
 
     return integrated_asy, integrated_unc, corrected_asy, valid_masses
+
 
 # %% asymmetry calibration helper
 
@@ -442,6 +465,88 @@ def analyze_k_mu_system(data):
 # %% Main execution block
 
 
+def compare_simulation_to_data():
+    """
+    Comparison Update:
+    - Real Data: Uses Total Yield (B+ and B-).
+    - Simulation: Uses B+ Only (scaled to match Total Real Data area).
+
+    This compares the SHAPE of the B+ efficiency to the SHAPE of the Total Data yield.
+    """
+
+    real_data = __load_signal_data(config.dataset)
+    # Turn off plotting for individual fits to save time
+    real_counts, real_unc, (real_centers, real_widths) = dimuon_binning.B_counts(
+        real_data, plot=False)
+
+    # Sum B+ and B- to get total yield per bin
+    real_yields = np.array([p + m for p, m in real_counts])
+    real_errors = np.array([np.sqrt(pu**2 + mu**2) for pu, mu in real_unc])
+
+    with open('datasets/rapidsim_Kmumu.pkl', 'rb') as f:
+        sim_data = pickle.load(f)
+
+    sim_counts, sim_unc, (sim_centers, sim_widths) = dimuon_binning.B_counts_simulation(
+        sim_data, plot=False)
+
+    # Since Sim is B+ only, sim_yields is essentially just the B+ count
+    sim_yields = np.array([p + m for p, m in sim_counts])
+    sim_errors = np.array([np.sqrt(pu**2 + mu**2) for pu, mu in sim_unc])
+
+    # --- Normalization ---
+    # Normalize the B+ simulation to match the TOTAL area of the real data (B+ and B-)
+    # This assumes Detector Symmetry (Efficiency_plus approx Efficiency_total/2 shape)
+    if np.sum(sim_yields) > 0:
+        scale_factor = np.sum(real_yields) / np.sum(sim_yields)
+    else:
+        scale_factor = 1.0
+
+    sim_yields_scaled = sim_yields * scale_factor
+    sim_errors_scaled = sim_errors * scale_factor
+
+    # --- Plotting ---
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), sharex=True,
+                                   gridspec_kw={'height_ratios': [3, 1]})
+
+    # Top Panel: Yields
+    ax1.errorbar(real_centers, real_yields, xerr=real_widths, yerr=real_errors,
+                 fmt='ko', label='Real Data (Total B+ and B-)', capsize=3)
+
+    ax1.errorbar(sim_centers, sim_yields_scaled, xerr=sim_widths, yerr=sim_errors_scaled,
+                 fmt='o', color='forestgreen', alpha=0.7,
+                 label=f'Simulation B+ (Scaled x{scale_factor:.2f})', capsize=0)
+
+    ax1.set_ylabel('Events / Bin')
+    ax1.set_title('Yield Comparison: Real Data vs Simulation (Scaled)')
+    ax1.legend()
+    ax1.grid(True, alpha=0.3)
+
+    # Bottom Panel: Efficiency Ratio (Data / Sim)
+    # Avoid division by zero
+    valid = sim_yields_scaled > 0
+    ratio = np.zeros_like(real_yields)
+    ratio_err = np.zeros_like(real_yields)
+
+    ratio[valid] = real_yields[valid] / sim_yields_scaled[valid]
+
+    # Error propagation for Ratio R = D / S
+    ratio_err[valid] = ratio[valid] * np.sqrt(
+        (real_errors[valid]/real_yields[valid])**2 +
+        (sim_errors_scaled[valid]/sim_yields_scaled[valid])**2
+    )
+
+    ax2.errorbar(real_centers[valid], ratio[valid], xerr=real_widths[valid], yerr=ratio_err[valid],
+                 fmt='ko', capsize=0)
+    ax2.axhline(1.0, color='gray', linestyle='--')
+    ax2.set_ylabel('Ratio (Data / Sim)')
+    ax2.set_xlabel(r'$q^2$ [GeV$^2/c^4$]')
+    ax2.set_ylim(0.0, 2.0)
+    ax2.grid(True, alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
+
+
 def plot_psi_2s(data):
     """
     Plots the dimuon invariant mass distribution around the psi(2s) resonance.
@@ -521,16 +626,11 @@ def compute_detector_bias():
 
 
 if __name__ == "__main__":
-    # pure_signal = filtered_data.load_simulation_data()
 
-    # counts, uncertainties, inv_mass = dimuon_binning.B_counts(
-    #     pure_signal, 1, plot=True)
+    # signal_data = __load_signal_data(config.dataset)
+    # acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
+    #     signal_data, plot=True)
 
-    signal_data = __load_signal_data(config.dataset)
-    # plot_psi_2s(signal_data)
-    # cal_asy, mass_bins = asymmetry_calibrated(
-    #     signal_data, n_bins=3, plot=False)
+    compare_simulation_to_data()
 
-    acp_rare, acp_rare_unc, corrected_asy, mass_bins = rare_decay_asymmetry(
-        signal_data, n_bins=1, plot=True)
     # detector_bias, bias_uncertainty = compute_detector_bias()

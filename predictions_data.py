@@ -213,7 +213,6 @@ def run_preds_samesign():
     samesign['signal'] = (
         samesign['avg_signal_probability'] >= 0.6).astype(int)
 
-
     fig, ax = plt.subplots(2, 1, figsize=(8, 5), sharex=True)
     # Plot histograms and get bin edges to calculate bin width
     n_signal, bins_signal, _ = ax[0].hist(
@@ -235,9 +234,10 @@ def run_preds_samesign():
     ax[1].set_yscale('log')
     ax[0].legend()
     ax[1].legend()
-    ax[0].set_title('Same-Sign (Background) Data Classified by BDT Ensemble')
+    ax[0].set_title('Classified Same-Sign (Background) Data')
     # Communal y-label with bin width
-    fig.text(0.04, 0.5, fr'Candidates / {bin_width:.0f} MeV/$c^2$', va='center', rotation='vertical', ha='center')
+    fig.text(0.04, 0.5, fr'Candidates / {bin_width:.0f} MeV/$c^2$',
+             va='center', rotation='vertical', ha='center')
     plt.tight_layout(rect=[0.06, 0, 1, 1])
     plt.show()
 
@@ -251,8 +251,8 @@ def run_preds_samesign():
 # %% main
 
 if __name__ == "__main__":
-    analyse = BDT_Analysis(plot=True)
-    analyse.save_cleaned_data()
+    # analyse = BDT_Analysis(plot=True)
+    # analyse.save_cleaned_data()
 
     run_preds_samesign()
 

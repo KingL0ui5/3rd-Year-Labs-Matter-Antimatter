@@ -1,6 +1,6 @@
 """
 Plot feature importances and ROC stability from trained XGBoost models across k folds.
-Updated to match Correlation Plot style.
+Updated: Thinner plot aspect ratio (width=9).
 """
 import glob
 import pickle
@@ -70,16 +70,16 @@ for i in range(k):
 
 df_imp = pd.DataFrame(all_importances)
 
-# Wrap text to approx 40 characters (same as correlation plot)
+# --- UPDATED: Wrap text to approx 20 characters to force splits ---
 df_imp['Feature'] = df_imp['Feature'].apply(
-    lambda x: '\n'.join(textwrap.wrap(x, width=40)))
+    lambda x: '\n'.join(textwrap.wrap(x, width=20)))
 
 order = df_imp.groupby('Feature')['Importance'].mean(
 ).sort_values(ascending=False).index[:10]
 
-# --- PLOT 1: FEATURE IMPORTANCE ---
-# Increased size to handle large fonts
-plt.figure(figsize=(14, 12))
+# --- PLOT 1: FEATURE IMPORTANCE (THINNER) ---
+# Reduced Width from 14 -> 9
+plt.figure(figsize=(9, 12))
 
 sns.barplot(
     data=df_imp,
@@ -89,26 +89,26 @@ sns.barplot(
     errorbar='sd',
     palette='viridis',
     estimator=np.mean,
-    edgecolor='white',  # Clean edges like correlation plot
+    edgecolor='white',
     # Thicker error bars for visibility
     err_kws={'color': 'crimson', 'linewidth': 3}
 )
 
 plt.title(f'Feature Importance Stability (k={k})',
-          fontsize=25, pad=20)
-plt.xlabel('Average Gain (Separation Power)', fontsize=25)
+          fontsize=22, pad=20)
+plt.xlabel('Average Gain (Separation Power)', fontsize=22)
 plt.ylabel('')  # Remove y-label
 
 # Explicitly set tick size
-plt.tick_params(axis='y', labelsize=20)
-plt.tick_params(axis='x', labelsize=20)
+plt.tick_params(axis='y', labelsize=18)
+plt.tick_params(axis='x', labelsize=18)
 
 plt.tight_layout()
 plt.show()
 
 
 # --- PLOT 2: ROC CURVE ---
-plt.figure(figsize=(12, 10))
+plt.figure(figsize=(10, 9))  # Made slightly more square/compact
 
 mean_tpr = np.mean(tprs, axis=0)
 mean_tpr[-1] = 1.0
@@ -125,10 +125,10 @@ plt.fill_between(mean_fpr, tprs_lower, tprs_upper, color='grey', alpha=.2,
 plt.plot([0, 1], [0, 1], linestyle='--', lw=3,
          color='r', label='Random', alpha=.8)
 
-plt.xlabel('False Positive Rate', fontsize=25)
-plt.ylabel('True Positive Rate', fontsize=25)
-plt.title(f'ROC Stability ({k}-Fold CV)', fontsize=30, pad=20)
-plt.legend(loc="lower right", fontsize=18)
+plt.xlabel('False Positive Rate', fontsize=22)
+plt.ylabel('True Positive Rate', fontsize=22)
+plt.title(f'ROC Stability ({k}-Fold CV)', fontsize=24, pad=20)
+plt.legend(loc="lower right", fontsize=16)
 plt.grid(True, alpha=0.3)
 plt.tight_layout()
 plt.show()

@@ -93,7 +93,7 @@ def calculate_and_plot_correlations(targets, data, metric='Spearman', top_n=7, s
 
     plt.title(
         f'Union of Top {top_n} Feature Correlations', fontsize=25, pad=20)
-    plt.xlabel(f"{metric} Score", fontsize=30)
+    plt.xlabel(f"{metric} Score", fontsize=25)
     plt.ylabel('')
     plt.grid(axis='x', linestyle='--', alpha=0.6)
     plt.tick_params(axis='y', labelsize=25)
