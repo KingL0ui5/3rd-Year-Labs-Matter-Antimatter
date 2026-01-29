@@ -13,7 +13,7 @@ from sklearn.model_selection import StratifiedKFold, KFold
 
 import config
 sns.set_style('darkgrid')
-sns.set_context('talk')
+sns.set_context('talk', font_scale=1.5)
 sns.set_palette("colorblind")
 
 
