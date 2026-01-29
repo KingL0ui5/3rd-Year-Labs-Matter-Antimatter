@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 sns.set_style('darkgrid')
-sns.set_context('talk', font_scale=1.2)
+sns.set_context('talk', font_scale=1.5)
 
 
 # %% Data Loading Functions
@@ -277,16 +277,11 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
         ax2.errorbar(valid_masses, y_points,
                      xerr=valid_widths,  # Add horizontal bars
                      yerr=y_errors,
-                     fmt='ko', capsize=3, label='Calibrated $A_{CP}$')
-
-        # Reference lines
-        ax2.axhline(0, color='red', linestyle='--', alpha=0.6)
-        ax2.axhspan(-delta_A_unc, delta_A_unc, color='blue',
-                    alpha=0.1, label='Calib. Unc.')
+                     fmt='ko', capsize=3)
 
         # Integrated value
         ax2.axhline(integrated_asy, color='green', linestyle=':', linewidth=2,
-                    label=f'Avg: {integrated_asy:.4f}')
+                    label=f'Avg: {integrated_asy:.3f} ± {integrated_unc:.3f}')
 
         # --- NEW: Charmonium Resonance Lines ---
         # J/psi at ~3096 MeV, Psi(2S) at ~3686 MeV
@@ -295,9 +290,12 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
         ax2.axvspan(psi2s_low, psi2s_high, color='gray',
                     alpha=0.3)
 
-        ax2.set_ylabel('Corrected CP Asymmetry')
-        ax2.set_xlabel(r'Dimuon Invariant Mass [MeV/c$^2$]')
-        ax2.set_ylim(-0.25, 0.25)
+        ax2.set_ylabel('Corrected A$_{CP}$')
+        ax2.set_xlabel(r'q$^2$ [MeV/c$^2$]')
+        ax2.set_ylim(-0.2, 0.2)
+        first_bin_edge = valid_masses[0] - valid_widths[0]
+        last_bin_edge = valid_masses[-1] + valid_widths[-1]
+        ax2.set_xlim(first_bin_edge - 100, last_bin_edge + 100)
         # 2 columns to fit resonance labels
         ax2.legend(loc='upper left', ncol=1)
         ax2.set_title('Corrected CP Asymmetry vs $q^2$')

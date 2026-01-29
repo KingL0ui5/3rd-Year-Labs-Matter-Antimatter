@@ -6,8 +6,11 @@ import config
 import os
 import zfit
 import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
-os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '0'
+
+sns.set_style('darkgrid')
+sns.set_context('talk', font_scale=1.5)
 
 
 def bin_data(data, plot=False, one_bin=False):
@@ -30,12 +33,10 @@ def bin_data(data, plot=False, one_bin=False):
             (0.05, 2.00),
             (2.00, 4.30),
             (4.30, 8.68),
-            # J/psi GAP SKIPPED
-            (10.09, 12.86),
-            # psi(2S) GAP SKIPPED
+            (10.15, 12.80),
             (14.18, 16.00),
             (16.00, 18.00),
-            (18.00, 25.00)  # Extended to 25.00 to capture high-mass tail
+            (18.00, 22.00)
         ]
 
     binned_data = []
@@ -282,7 +283,7 @@ def plot_zfit_results(data, model, obs, b_counts, log_scale=False, plot_title='F
     y_peak = counts.max()
 
     if b_counts > 0:
-        textstr = f'B Count: {b_counts}'
+        textstr = f'B Count: {b_counts:.0f}'
         props = dict(boxstyle='round', facecolor='white',
                      alpha=0.8, edgecolor='black')
 
