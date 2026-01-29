@@ -7,50 +7,58 @@ import zfit
 import matplotlib.pyplot as plt
 import numpy as np
 os.environ['ZFIT_DISABLE_TF_WARNINGS'] = '0'
-plt.rcParams.update({'font.size': 40})
 
-def bin_data(data, n_bins, plot=False):
+
+def bin_data(data, plot=False):
     """
-    Splits the data into 'n_bins' of equal width across the mass range.
+    Splits the data into specific q^2 bins defined in the uploaded table.
     """
     mass_col = 'dimuon-system invariant mass'
-    min_val = data[mass_col].min()
-    max_val = data[mass_col].max()
 
-    edges = np.linspace(min_val, max_val, n_bins + 1)
-    bin_assignments = pd.cut(
-        data[mass_col], bins=edges, labels=False, include_lowest=True)
+    bin_ranges = [
+        (0.05, 2.00),
+        (2.00, 4.30),
+        (4.30, 8.68),
+        (10.09, 12.86),
+        (14.18, 16.00),
+        (16.00, 18.00),
+        (18.00, 22.00)
+    ]
+
     binned_data = []
-    for i in range(n_bins):
-        bin_df = data[bin_assignments == i].copy()
+    bin_labels = []
+
+    for low, high in bin_ranges:
+        mask = (data[mass_col] >= low) & (data[mass_col] < high)
+        bin_df = data[mask].copy()
         binned_data.append(bin_df)
+        bin_labels.append(f'{low} - {high}')
 
     if plot:
+        n_bins = len(binned_data)
         plt.figure(figsize=(12, 7))
+
         colors = plt.cm.nipy_spectral(np.linspace(0, 0.95, n_bins))
-        plot_data = [df['dimuon-system invariant mass'] for df in binned_data]
-        labels = [f'Bin {i}' for i in range(n_bins)]
+
+        plot_data = [df[mass_col] for df in binned_data]
+
         plt.hist(plot_data,
                  bins=300,
                  stacked=True,
                  color=colors,
-                 label=labels,
+                 label=bin_labels,
                  edgecolor='black',
                  linewidth=0.5,
                  alpha=0.8)
-        plt.xlabel(r'Dimuon Mass [MeV/$c^2$]', fontsize=12)
+
+        plt.xlabel(r'$q^2$ [GeV$^2/c^4$]', fontsize=12)
         plt.ylabel('Events (Log Scale)', fontsize=12)
         plt.yscale('log')
-        plt.title(
-            f'Data Partitioned into {n_bins} Iso-Statistical Bins', fontsize=14)
+        plt.title('Data Partitioned into Specific $q^2$ Bins', fontsize=14)
 
         plt.grid(True, which="both", ls="-", alpha=0.2)
 
-        if n_bins <= 15:
-            plt.legend(title="Mass Bins", frameon=True, loc='upper right')
-        else:
-            plt.text(0.95, 0.95, f'{n_bins} Bins Defined', transform=plt.gca().transAxes,
-                     ha='right', va='top', bbox=dict(facecolor='white', alpha=0.8))
+        plt.legend(title="$q^2$ Bins", frameon=True, loc='upper right')
 
         plt.tight_layout()
         plt.show()
@@ -80,8 +88,8 @@ def B_counts(data, n_bins, plot=False):
     Updated to pass dynamic titles for binned mass spectrum plots.
     """
     B_plus, B_minus = split_Bs(data)
-    
-    # We set plot=False here because we want the individual ZFit plots, 
+
+    # We set plot=False here because we want the individual ZFit plots,
     # not the stacked binning histogram every time.
     binned_B_plus = bin_data(B_plus, n_bins=n_bins, plot=False)
     binned_B_minus = bin_data(B_minus, n_bins=n_bins, plot=False)
@@ -99,19 +107,19 @@ def B_counts(data, n_bins, plot=False):
         # Define the mass range string for the titles
         m_min, m_max = bin_edges[i], bin_edges[i+1]
         range_str = f"{m_min:.0f}-{m_max:.0f} MeV"
-        
+
         # Call background_fit_cleaning with dynamic titles
         # This will flow into plot_zfit_results
         _, n_plus, n_plus_unc = background_fit_cleaning(
-            bin_p, 
-            plotting=plot, 
+            bin_p,
+            plotting=plot,
             plot_title=f'B+ Fit (Dimuon Bin {i}: {range_str})',
             fold=f'Bplus_bin{i}'
         )
-        
+
         _, n_minus, n_minus_unc = background_fit_cleaning(
-            bin_m, 
-            plotting=plot, 
+            bin_m,
+            plotting=plot,
             plot_title=f'B- Fit (Dimuon Bin {i}: {range_str})',
             fold=f'Bminus_bin{i}'
         )
@@ -223,16 +231,17 @@ def background_fit_cleaning(data, plotting=True, plot_title='Fit Result: B Invar
 
     return data, sig_val, sig_err
 
-def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all', b_counts=10):
+
+def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all'):
     lower, upper = obs.limit1d
     n_bins = 100
     x_plot = np.linspace(lower, upper, 1000)
     bin_width = (upper - lower) / n_bins
 
     # Create two subplots: Main plot (ratio 4) and Pull plot (ratio 1)
-    fig, (ax_main, ax_pull) = plt.subplots(2, 1, figsize=(12, 10), sharex=True, 
+    fig, (ax_main, ax_pull) = plt.subplots(2, 1, figsize=(12, 10), sharex=True,
                                            gridspec_kw={'height_ratios': [4, 1], 'hspace': 0.05})
-    
+
     # Calculate Histogram data
     counts, bin_edges = np.histogram(data['B invariant mass'], bins=n_bins)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
@@ -240,20 +249,25 @@ def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result:
 
     # --- MAIN PLOT ---
     # Background & Signal
-    y_bkg = model.pdfs[1].pdf(x_plot).numpy() * model.pdfs[1].get_yield().numpy() * bin_width
-    ax_main.plot(x_plot, y_bkg, color='forestgreen', lw=2, label='Background (Exp)', zorder=1)
+    y_bkg = model.pdfs[1].pdf(x_plot).numpy() * \
+        model.pdfs[1].get_yield().numpy() * bin_width
+    ax_main.plot(x_plot, y_bkg, color='forestgreen',
+                 lw=2, label='Background (Exp)', zorder=1)
 
-    y_sig = model.pdfs[0].pdf(x_plot).numpy() * model.pdfs[0].get_yield().numpy() * bin_width
-    ax_main.plot(x_plot, y_sig, color='royalblue', lw=2, ls='--', label='Signal (CB)', zorder=2)
+    y_sig = model.pdfs[0].pdf(x_plot).numpy() * \
+        model.pdfs[0].get_yield().numpy() * bin_width
+    ax_main.plot(x_plot, y_sig, color='royalblue', lw=2,
+                 ls='--', label='Signal (CB)', zorder=2)
 
     # Total Fit
     total_yield = model.get_yield().numpy()
     y_plot_tot = model.pdf(x_plot).numpy() * total_yield * bin_width
-    ax_main.plot(x_plot, y_plot_tot, color='crimson', lw=3.5, label='Total Fit', zorder=3)
+    ax_main.plot(x_plot, y_plot_tot, color='crimson',
+                 lw=3.5, label='Total Fit', zorder=3)
 
     # Data Points (Zero-suppressed)
     mask = counts > 0
-    ax_main.errorbar(bin_centers[mask], counts[mask], yerr=y_err[mask], fmt='ko', 
+    ax_main.errorbar(bin_centers[mask], counts[mask], yerr=y_err[mask], fmt='ko',
                      markersize=6, capsize=0, elinewidth=1.5, label='Data', zorder=10)
 
     x_peak = bin_centers[counts.argmax()]
@@ -261,10 +275,11 @@ def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result:
 
     if b_counts > 0:
         textstr = f'B Count: {b_counts}'
-        props = dict(boxstyle='round', facecolor='white', alpha=0.8, edgecolor='black')
+        props = dict(boxstyle='round', facecolor='white',
+                     alpha=0.8, edgecolor='black')
 
         ax_main.text(x_peak * 1.05, y_peak * 1.05, textstr,
-                    verticalalignment='bottom', horizontalalignment='center', bbox=props)
+                     verticalalignment='bottom', horizontalalignment='center', bbox=props)
 
     # --- PULL PLOT ---
     # 1. Calculate the fit value at each bin center
@@ -274,21 +289,24 @@ def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result:
     # We only calculate pulls where we have data to avoid dividing by zero
     pulls = (counts[mask] - fit_counts[mask]) / y_err[mask]
 
-    ax_pull.errorbar(bin_centers[mask], pulls, yerr=np.ones_like(pulls), fmt='ko', markersize=4)
+    ax_pull.errorbar(bin_centers[mask], pulls, yerr=np.ones_like(
+        pulls), fmt='ko', markersize=4)
     ax_pull.axhline(0, color='crimson', lw=1)
-    ax_pull.fill_between(bin_centers[mask], -1, 1, color='gray', alpha=0.2) # 1-sigma band
-    ax_pull.fill_between(bin_centers[mask], -2, 2, color='gray', alpha=0.1) # 2-sigma band
+    ax_pull.fill_between(bin_centers[mask], -1,
+                         1, color='gray', alpha=0.2)  # 1-sigma band
+    ax_pull.fill_between(bin_centers[mask], -2,
+                         2, color='gray', alpha=0.1)  # 2-sigma band
 
     # Formatting
     ax_main.set_title(plot_title, fontsize=20, pad=15)
     ax_main.set_ylabel(f'Events / ({bin_width:.1f} MeV/$c^2$)', fontsize=16)
     ax_main.legend(fontsize=14, frameon=True)
-    
+
     ax_pull.set_xlabel(r'B candidate mass [MeV/$c^2$]', fontsize=16)
     ax_pull.set_ylabel('Pull', fontsize=16)
-    ax_pull.set_ylim(-5, 5) # Pulls usually live between -3 and 3
+    ax_pull.set_ylim(-5, 5)  # Pulls usually live between -3 and 3
     ax_pull.set_yticks([-3, 0, 3])
-    
+
     for ax in [ax_main, ax_pull]:
         ax.tick_params(axis='both', which='major', labelsize=14)
 
@@ -299,6 +317,7 @@ def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result:
     plt.tight_layout()
     plt.savefig(f'figs/fit_result_{fold}.png', dpi=300)
     plt.show()
+
 
 def clean_signal(cleaned_data, plotting=True):
     final_signal_data = []
