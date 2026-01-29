@@ -291,15 +291,15 @@ def rare_decay_asymmetry(data, n_bins=10, plot: bool = False):
         # --- NEW: Charmonium Resonance Lines ---
         # J/psi at ~3096 MeV, Psi(2S) at ~3686 MeV
         ax2.axvspan(jpsi_low, jpsi_high, color='gray',
-                    alpha=0.3, label=r'$J/\psi$ Veto')
+                    alpha=0.3)
         ax2.axvspan(psi2s_low, psi2s_high, color='gray',
-                    alpha=0.3, label=r'$\psi(2S)$ Veto')
+                    alpha=0.3)
 
         ax2.set_ylabel('Corrected CP Asymmetry')
-        ax2.set_xlabel('Dimuon Invariant Mass [MeV]')
+        ax2.set_xlabel(r'Dimuon Invariant Mass [MeV/c$^2$]')
         ax2.set_ylim(-0.25, 0.25)
         # 2 columns to fit resonance labels
-        ax2.legend(loc='upper right', ncol=2)
+        ax2.legend(loc='upper left', ncol=1)
         ax2.set_title('Corrected CP Asymmetry vs $q^2$')
 
         plt.tight_layout()

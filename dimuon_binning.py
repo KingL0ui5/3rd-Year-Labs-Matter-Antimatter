@@ -229,7 +229,8 @@ def background_fit_cleaning(data, plotting=True, plot_title='Fit Result: B Invar
 
     if plotting:
         # We only plot if the data isn't empty and the model exists
-        plot_zfit_results(data, model, obs, plot_title=plot_title, fold=fold)
+        plot_zfit_results(data, model, obs, plot_title=plot_title,
+                          fold=fold, b_counts=sig_val)
 
     # 8. Calculate Event Weights
     probs_sig = signal_pdf.ext_pdf(z_data).numpy()
@@ -239,7 +240,7 @@ def background_fit_cleaning(data, plotting=True, plot_title='Fit Result: B Invar
     return data, sig_val, sig_err
 
 
-def plot_zfit_results(data, model, obs, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all', b_counts=10):
+def plot_zfit_results(data, model, obs, b_counts, log_scale=False, plot_title='Fit Result: B Invariant Mass Distribution', fold='all'):
     lower, upper = obs.limit1d
     n_bins = 100
     x_plot = np.linspace(lower, upper, 1000)
